@@ -44,9 +44,13 @@ const DELTAS: Record<Direction, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 
+export function normalizeName(raw: string): string {
+  return raw.trim().replace(/^@/, '').slice(0, MAX_NAME_LENGTH);
+}
+
 /** Kullanıcı adından benzersiz anahtar üretir. "@Ali" ve "ali" aynı oyuncudur. */
 export function userKey(name: string): string {
-  return name.trim().replace(/^@/, '').toLocaleLowerCase('tr-TR');
+  return normalizeName(name).toLocaleLowerCase('tr-TR');
 }
 
 export function createWorld(seed: number): GameWorld {
@@ -68,13 +72,58 @@ export function createWorld(seed: number): GameWorld {
   };
 }
 
+export type AddPlayerResult =
+  | { ok: true; key: string }
+  | { ok: false; reason: 'invalid_name' | 'name_taken' | 'room_full' | 'match_in_progress' };
+
+/**
+ * Lobiye doğrudan oyuncu ekler (soket girişi için). Yorumla katılımda
+ * komut sırasından geçer, bu fonksiyon onu atlar.
+ */
+export function addPlayer(world: GameWorld, rawName: string): AddPlayerResult {
+  const name = normalizeName(rawName);
+  if (name.length === 0) return { ok: false, reason: 'invalid_name' };
+  if (world.phase !== 'lobby') return { ok: false, reason: 'match_in_progress' };
+  const key = userKey(name);
+  if (world.players[key]) return { ok: false, reason: 'name_taken' };
+  if (Object.keys(world.players).length >= MAX_PLAYERS) return { ok: false, reason: 'room_full' };
+  world.players[key] = {
+    key,
+    name,
+    role: 'survivor',
+    x: -1,
+    y: -1,
+    caught: false,
+    rescueProgress: 0,
+    immunity: 0,
+    cooldown: 0,
+    score: 0,
+    connected: true,
+  };
+  return { ok: true, key };
+}
+
+/** Yalnızca lobide çalışır. Maç başladıysa oyuncu silinmez. */
+export function removePlayer(world: GameWorld, key: string): boolean {
+  if (world.phase !== 'lobby' || !world.players[key]) return false;
+  delete world.players[key];
+  return true;
+}
+
+export function setConnected(world: GameWorld, key: string, connected: boolean): boolean {
+  const p = world.players[key];
+  if (!p) return false;
+  p.connected = connected;
+  return true;
+}
+
 /**
  * Bir komutu sıraya alır. Uygulama bir sonraki step() çağrısında yapılır.
  * Böylece komutlar tick sınırında, sırayla ve deterministik işlenir.
  */
 export function enqueue(world: GameWorld, name: string, command: Command): boolean {
   if (world.queue.length >= MAX_QUEUE_LENGTH) return false;
-  const trimmed = name.trim().replace(/^@/, '').slice(0, MAX_NAME_LENGTH);
+  const trimmed = normalizeName(name);
   if (trimmed.length === 0) return false;
   world.queue.push({ userKey: userKey(trimmed), name: trimmed, command });
   return true;
@@ -106,11 +155,9 @@ export function step(world: GameWorld): void {
  * Katil rastgele seçilir. Katil, diğer oyunculardan uzağa doğar.
  */
 export function startMatch(world: GameWorld): StartResult {
-  if (world.phase !== 'lobby') return { ok: false, reason: 'Oyun zaten başladı veya bitti.' };
+  if (world.phase !== 'lobby') return { ok: false, reason: 'match_already_started' };
   const keys = Object.keys(world.players);
-  if (keys.length < MIN_PLAYERS_TO_START) {
-    return { ok: false, reason: `En az ${MIN_PLAYERS_TO_START} oyuncu gerekiyor.` };
-  }
+  if (keys.length < MIN_PLAYERS_TO_START) return { ok: false, reason: 'not_enough_players' };
 
   const rng: RngState = { s: world.rngState };
   const killerKey = keys[nextInt(rng, keys.length)];
@@ -169,7 +216,7 @@ export function litTiles(world: GameWorld): boolean[] {
 function apply(world: GameWorld, intent: Intent): void {
   const { command } = intent;
   if (command.type === 'join') {
-    joinLobby(world, intent.userKey, intent.name);
+    joinLobby(world, intent.name);
     return;
   }
   if (world.phase !== 'playing') return;
@@ -191,23 +238,10 @@ function apply(world: GameWorld, intent: Intent): void {
   }
 }
 
-function joinLobby(world: GameWorld, key: string, name: string): void {
-  if (world.phase !== 'lobby') return;
-  if (world.players[key]) return;
-  if (Object.keys(world.players).length >= MAX_PLAYERS) return;
-  world.players[key] = {
-    key,
-    name,
-    role: 'survivor',
-    x: -1,
-    y: -1,
-    caught: false,
-    rescueProgress: 0,
-    immunity: 0,
-    cooldown: 0,
-    score: 0,
-  };
-  world.events.push({ type: 'joined', key });
+/** Yorumla GİR: başarılıysa olay üretir, aynı kişi ikinci kez girerse sessizce yok sayılır. */
+function joinLobby(world: GameWorld, name: string): void {
+  const result = addPlayer(world, name);
+  if (result.ok) world.events.push({ type: 'joined', key: result.key });
 }
 
 function move(world: GameWorld, p: Player, dir: Direction): void {

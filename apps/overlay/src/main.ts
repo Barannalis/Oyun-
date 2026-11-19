@@ -1,28 +1,16 @@
 import Phaser from 'phaser';
-import {
-  createWorld,
-  enqueue,
-  parseCommand,
-  startMatch,
-  type GameWorld,
-} from '@ttl/game-core';
-import { CANVAS_H, CANVAS_W, GameScene, type Session } from './scenes/GameScene';
-import { SimulatedChatSource } from './sim/SimulatedChatSource';
+import { parseCommand, type GameWorld } from '@ttl/game-core';
 import { REASON_LABEL, pushLog } from './format';
+import { CANVAS_H, CANVAS_W, GameScene } from './scenes/GameScene';
+import { createSession } from './session';
+import { RoomClient } from './net/RoomClient';
 
-const session: Session = {
-  world: createWorld(newSeed()),
-  log: [],
-};
-const source = new SimulatedChatSource();
+const SERVER_URL: string = import.meta.env.VITE_SERVER_URL ?? 'http://127.0.0.1:3000';
+const HOST_TOKEN: string = import.meta.env.VITE_HOST_TOKEN ?? 'dev-host-token';
+
+const session = createSession();
+const room = new RoomClient(SERVER_URL, HOST_TOKEN, session);
 let botCounter = 0;
-
-// Yorum akışı: kaynak → komut çözümleme → sıraya alma
-source.subscribe((msg) => {
-  pushLog(session.log, `${msg.user}: ${msg.text}`);
-  const command = parseCommand(msg.text);
-  if (command) enqueue(session.world, msg.user, command);
-});
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -49,18 +37,17 @@ function currentUser(): string {
   return userInput.value.trim() || 'Ayşe';
 }
 
-function sendAs(user: string, text: string): void {
-  source.send(user, text);
-}
-
-function notify(line: string): void {
-  pushLog(session.log, `» ${line}`);
+/** Simülatör yorumu: sunucuya gider, çözümleme ve hız sınırı sunucuda yapılır. */
+function sendChat(user: string, text: string): void {
+  if (parseCommand(text) === null) pushLog(session.log, `${user}: ${text} (tanınmayan komut)`);
+  else pushLog(session.log, `${user}: ${text}`);
+  room.hostChat(user, text);
 }
 
 $('send').addEventListener('click', () => {
   const text = textInput.value.trim();
   if (!text) return;
-  sendAs(currentUser(), text);
+  sendChat(currentUser(), text);
   textInput.value = '';
   textInput.focus();
 });
@@ -69,29 +56,41 @@ textInput.addEventListener('keydown', (e) => {
 });
 
 document.querySelectorAll<HTMLButtonElement>('button[data-cmd]').forEach((btn) => {
-  btn.addEventListener('click', () => sendAs(currentUser(), btn.dataset.cmd ?? ''));
+  btn.addEventListener('click', () => sendChat(currentUser(), btn.dataset.cmd ?? ''));
 });
 
 $('bots').addEventListener('click', () => {
   for (let i = 0; i < 5; i++) {
     botCounter += 1;
-    sendAs(`bot${String(botCounter).padStart(2, '0')}`, 'GİR');
+    sendChat(`bot${String(botCounter).padStart(2, '0')}`, 'GİR');
   }
 });
 
-$('start').addEventListener('click', () => {
-  const result = startMatch(session.world);
-  if (result.ok) notify('Maç başladı');
-  else notify(result.reason);
-});
-
+$('start').addEventListener('click', () => room.hostStart());
 $('reset').addEventListener('click', () => {
-  session.world = createWorld(newSeed());
-  session.log.length = 0;
-  notify('Yeni lobi oluşturuldu');
+  botCounter = 0;
+  room.hostReset();
 });
 
-function renderPanel(world: GameWorld): void {
+function renderPanel(world: GameWorld | null): void {
+  if (!world) {
+    $('stat-phase').textContent = session.connected ? 'Bekleniyor' : 'Bağlanıyor';
+    $('players').innerHTML = '<tr><td colspan="4" class="muted">Sunucu verisi bekleniyor</td></tr>';
+  } else {
+    renderWorldPanel(world);
+  }
+  $('conn').textContent = session.connected ? 'Bağlı' : 'Bağlantı yok';
+  $('conn').className = session.connected ? 'ok' : 'bad';
+
+  const logEl = $('log');
+  if (logEl.dataset.count !== String(session.log.length)) {
+    logEl.innerHTML = session.log.slice(-30).map((l) => `<li>${escapeHtml(l)}</li>`).join('');
+    logEl.dataset.count = String(session.log.length);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+}
+
+function renderWorldPanel(world: GameWorld): void {
   const players = Object.values(world.players);
   const survivors = players.filter((p) => p.role === 'survivor');
   const caught = survivors.filter((p) => p.caught).length;
@@ -112,19 +111,17 @@ function renderPanel(world: GameWorld): void {
     .sort((a, b) => b.score - a.score)
     .map((p) => {
       const role = p.role === 'killer' ? 'Katil' : 'Hayatta';
-      const state = p.caught ? 'Yakalandı' : world.phase === 'lobby' ? 'Lobide' : 'Aktif';
+      const state = !p.connected
+        ? 'Bağlantı yok'
+        : p.caught
+          ? 'Yakalandı'
+          : world.phase === 'lobby'
+            ? 'Lobide'
+            : 'Aktif';
       return `<tr><td>${escapeHtml(p.name)}</td><td>${role}</td><td>${state}</td><td class="num">${p.score}</td></tr>`;
     })
     .join('');
   $('players').innerHTML = rows || '<tr><td colspan="4" class="muted">Henüz oyuncu yok</td></tr>';
-
-  const logEl = $('log');
-  const lines = session.log.slice(-30).map((l) => `<li>${escapeHtml(l)}</li>`).join('');
-  if (logEl.dataset.count !== String(session.log.length)) {
-    logEl.innerHTML = lines;
-    logEl.dataset.count = String(session.log.length);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
 }
 
 function escapeHtml(s: string): string {
@@ -133,8 +130,3 @@ function escapeHtml(s: string): string {
 
 setInterval(() => renderPanel(session.world), 250);
 
-function newSeed(): number {
-  return Math.floor(Math.random() * 2_000_000_000);
-}
-
-source.start();

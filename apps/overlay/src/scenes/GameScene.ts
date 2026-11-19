@@ -5,23 +5,21 @@ import {
   MAP_HEIGHT,
   MAP_WIDTH,
   MAX_PLAYERS,
-  TICK_MS,
   TICK_RATE,
   TILE_WALL,
   isNight,
   litTiles,
-  step,
   type GameWorld,
-  type Player,
+  type MapData,
 } from '@ttl/game-core';
-import { describeEvent, pushLog } from '../format';
+import { REASON_LABEL, describeEvent, pushLog } from '../format';
+import type { Session } from '../session';
 
 export const TILE = 28;
 export const HUD_H = 40;
 export const CANVAS_W = MAP_WIDTH * TILE;
 export const CANVAS_H = HUD_H + MAP_HEIGHT * TILE;
 
-const MAX_ACC_MS = TICK_MS * 5;
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
 const COLOR = {
@@ -37,11 +35,6 @@ const COLOR = {
   protect: 0x9be7a5,
 } as const;
 
-export interface Session {
-  world: GameWorld;
-  log: string[];
-}
-
 interface Flash {
   x: number;
   y: number;
@@ -50,9 +43,12 @@ interface Flash {
   color: number;
 }
 
+/**
+ * Sunucudan gelen dünyayı çizer. Oyun mantığı burada çalışmaz,
+ * tüm durum sunucudan gelir.
+ */
 export class GameScene extends Phaser.Scene {
-  private acc = 0;
-  private builtFor: GameWorld | null = null;
+  private builtFor: MapData | null = null;
   private staticLayer!: Phaser.GameObjects.Graphics;
   private genLayer!: Phaser.GameObjects.Graphics;
   private fogLayer!: Phaser.GameObjects.Graphics;
@@ -90,18 +86,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    this.acc = Math.min(this.acc + deltaMs, MAX_ACC_MS);
-    while (this.acc >= TICK_MS) {
-      this.acc -= TICK_MS;
-      const world = this.session.world;
-      step(world);
-      this.consumeEvents(world);
-    }
+    this.consumeEvents();
     this.render(deltaMs);
   }
 
-  private consumeEvents(world: GameWorld): void {
-    for (const e of world.events) {
+  private consumeEvents(): void {
+    const pending = this.session.pending.splice(0);
+    const world = this.session.world;
+    if (!world) return;
+    for (const e of pending) {
       pushLog(this.session.log, describeEvent(world, e));
       if (e.type === 'caught') this.flashAt(world.players[e.victim], COLOR.killer);
       if (e.type === 'rescued') this.flashAt(world.players[e.victim], COLOR.protect);
@@ -119,7 +112,11 @@ export class GameScene extends Phaser.Scene {
 
   private render(deltaMs: number): void {
     const world = this.session.world;
-    if (this.builtFor !== world) this.buildStatic(world);
+    if (!world) {
+      this.renderWaiting();
+      return;
+    }
+    if (this.builtFor !== world.map) this.buildStatic(world);
 
     this.drawGenerators(world);
     this.drawFog(world);
@@ -128,8 +125,20 @@ export class GameScene extends Phaser.Scene {
     this.drawBanner(world);
   }
 
+  private renderWaiting(): void {
+    this.staticLayer.clear();
+    this.genLayer.clear();
+    this.fogLayer.clear();
+    this.actorLayer.clear();
+    this.destroyLabels();
+    this.builtFor = null;
+    this.hud.setText(this.session.connected ? 'Oda bilgisi bekleniyor' : 'Sunucuya bağlanılıyor');
+    this.banner.setText('Sunucuya bağlanılıyor…');
+    this.banner.setVisible(true);
+  }
+
   private buildStatic(world: GameWorld): void {
-    this.builtFor = world;
+    this.builtFor = world.map;
     const g = this.staticLayer.clear();
     const { width, height, tiles } = world.map;
     for (let y = 0; y < height; y++) {
@@ -144,6 +153,10 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+    this.destroyLabels();
+  }
+
+  private destroyLabels(): void {
     for (const label of this.labels.values()) label.destroy();
     this.labels.clear();
   }
@@ -185,12 +198,12 @@ export class GameScene extends Phaser.Scene {
       const body = p.caught ? COLOR.caught : p.role === 'killer' ? COLOR.killer : COLOR.survivor;
 
       if (p.immunity > 0) a.lineStyle(2, COLOR.protect, 0.9).strokeCircle(cx, cy, TILE * 0.5);
-      a.fillStyle(body, 1).fillCircle(cx, cy, TILE * 0.34);
+      a.fillStyle(body, p.connected ? 1 : 0.35).fillCircle(cx, cy, TILE * 0.34);
       if (p.caught) {
         const r = TILE * 0.2;
         a.lineStyle(2, 0xffffff, 0.9).lineBetween(cx - r, cy - r, cx + r, cy + r).lineBetween(cx - r, cy + r, cx + r, cy - r);
       }
-      this.updateLabel(p, cx, cy);
+      this.updateLabel(p.key, p.name, p.role === 'killer', p.caught, p.connected, cx, cy);
     }
 
     for (let i = this.flashes.length - 1; i >= 0; i--) {
@@ -214,18 +227,27 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updateLabel(p: Player, cx: number, cy: number): void {
-    let label = this.labels.get(p.key);
+  private updateLabel(
+    key: string,
+    name: string,
+    isKiller: boolean,
+    caught: boolean,
+    connected: boolean,
+    cx: number,
+    cy: number,
+  ): void {
+    let label = this.labels.get(key);
     if (!label) {
       label = this.add
         .text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: '#e6f7ff' })
         .setOrigin(0.5, 1)
         .setDepth(25);
-      this.labels.set(p.key, label);
+      this.labels.set(key, label);
     }
-    const text = p.caught ? `${p.name} (yakalandı)` : p.name;
+    const suffix = caught ? ' (yakalandı)' : connected ? '' : ' (bağlantı yok)';
+    const text = `${name}${suffix}`;
     if (label.text !== text) label.setText(text);
-    const color = p.role === 'killer' ? '#ff9a9a' : '#e6f7ff';
+    const color = isKiller ? '#ff9a9a' : '#e6f7ff';
     if (label.style.color !== color) label.setColor(color);
     label.setPosition(cx, cy - TILE * 0.42);
   }
@@ -239,8 +261,9 @@ export class GameScene extends Phaser.Scene {
       world.phase === 'lobby' ? 'LOBİ' : world.phase === 'ended' ? 'BİTTİ' : isNight(world.tick) ? 'GECE' : 'GÜNDÜZ';
     const players = Object.keys(world.players).length;
     const timer = world.phase === 'playing' ? `Kalan süre ${mm}:${ss}` : '';
+    const link = this.session.connected ? '' : '   [BAĞLANTI YOK]';
     this.hud.setText(
-      `${phase}   Oyuncu ${players}/${MAX_PLAYERS}   Jeneratör ${done}/${world.generators.length}   ${timer}`,
+      `${phase}   Oyuncu ${players}/${MAX_PLAYERS}   Jeneratör ${done}/${world.generators.length}   ${timer}${link}`,
     );
   }
 
@@ -254,12 +277,9 @@ export class GameScene extends Phaser.Scene {
           : `Lobi: ${shown}\nBaşlatmak için paneli kullanın (en az 2 oyuncu).`,
       );
       this.banner.setVisible(true);
-    } else if (world.phase === 'ended') {
+    } else if (world.phase === 'ended' && world.winner && world.winReason) {
       const winner = world.winner === 'survivors' ? 'HAYATTA KALANLAR' : 'KATİL';
-      const reason = world.winReason === 'generators-done' ? 'Tüm jeneratörler çalıştırıldı'
-        : world.winReason === 'all-caught' ? 'Tüm hayatta kalanlar yakalandı'
-        : 'Süre doldu';
-      this.banner.setText(`KAZANAN: ${winner}\n${reason}`);
+      this.banner.setText(`KAZANAN: ${winner}\n${REASON_LABEL[world.winReason]}`);
       this.banner.setVisible(true);
     } else {
       this.banner.setVisible(false);

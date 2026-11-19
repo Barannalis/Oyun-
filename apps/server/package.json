@@ -1,0 +1,21 @@
+{
+  "name": "@ttl/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sunucu otoriteli oyun sunucusu: Socket.IO, tek oyun odası, yorum girişi",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "loadtest": "tsx scripts/loadtest.ts"
+  },
+  "dependencies": {
+    "@ttl/game-core": "0.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.20.6"
+  }
+}

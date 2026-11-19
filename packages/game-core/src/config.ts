@@ -6,13 +6,24 @@
 export const TICK_RATE = 20;
 export const TICK_MS = 1000 / TICK_RATE;
 
+/** Sunucunun durum yayın sıklığı (ms). Tick'ten seyrek tutulur. */
+export const STATE_BROADCAST_MS = 100;
+
 export const MAP_WIDTH = 31;
 export const MAP_HEIGHT = 19;
 
 export const MAX_PLAYERS = 20;
 export const MIN_PLAYERS_TO_START = 2;
 export const MAX_NAME_LENGTH = 32;
+export const MAX_CHAT_LENGTH = 120;
 export const MAX_QUEUE_LENGTH = 2000;
+
+/** Bağlantısı kopan lobi oyuncusunun yeniden bağlanmak için beklediği süre (ms). */
+export const RECONNECT_GRACE_MS = 30_000;
+
+/** Kullanıcı başına yorum sınırı: en fazla CAPACITY ardışık yorum, saniyede REFILL yenileme. */
+export const CHAT_BUCKET_CAPACITY = 6;
+export const CHAT_REFILL_PER_SEC = 4;
 
 export const GENERATOR_COUNT = 4;
 export const GENERATOR_REQUIRED_PROGRESS = 100;

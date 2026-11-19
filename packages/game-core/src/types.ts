@@ -33,6 +33,8 @@ export interface Player {
   /** Bir sonraki eyleme kadar kalan süre (tick). */
   cooldown: number;
   score: number;
+  /** Oyuncunun bağlantısı açık mı. Yalnızca soket üzerinden katılanlar için anlamlıdır. */
+  connected: boolean;
 }
 
 export interface Generator {
@@ -79,4 +81,5 @@ export interface Position {
   y: number;
 }
 
-export type StartResult = { ok: true } | { ok: false; reason: string };
+export type StartFailure = 'match_already_started' | 'not_enough_players';
+export type StartResult = { ok: true } | { ok: false; reason: StartFailure };
