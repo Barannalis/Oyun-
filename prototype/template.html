@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CANAVAR AVI · Prototip</title>
+<style>
+  :root { color-scheme: dark; --bg:#05070b; --panel:#0d121a; --panel2:#131a24; --line:#1f2a38; --text:#d8dee9; --muted:#7b8798; --red:#ff4d4d; --blue:#4fc3f7; --ok:#3ddc84; --gold:#f5c542; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:17px; letter-spacing:.08em; }
+  header span { color:var(--muted); font-size:13px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:14px; padding:14px; align-items:start; }
+  .stage { background:#000; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  canvas { display:block; width:100%; height:auto; }
+  .col { display:grid; gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .card h2 { margin:0 0 10px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat { background:var(--panel2); border-radius:8px; padding:8px 10px; }
+  .stat small { display:block; color:var(--muted); font-size:11px; }
+  .stat b { font-size:15px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, select, button { font:inherit; font-size:14px; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-width:0; }
+  input { flex:1; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--blue); }
+  button.primary { background:#1d3a4d; border-color:var(--blue); }
+  button.danger { border-color:var(--red); }
+  .cmds { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+  .cmds button { font-weight:600; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:5px 4px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  ol#log { list-style:none; margin:0; padding:0; font-size:12.5px; line-height:1.5; max-height:220px; overflow-y:auto; }
+  ol#log li { border-bottom:1px dashed var(--line); padding:3px 0; }
+  .hint { color:var(--muted); font-size:12px; margin:8px 0 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>CANAVAR AVI</h1>
+  <span>Prototip · tarayıcıda çalışır, sunucu gerektirmez · yorumlar simüle edilir</span>
+</header>
+<main class="layout">
+  <section class="stage"><canvas id="game" width="868" height="572"></canvas></section>
+  <aside class="col">
+    <section class="card">
+      <h2>Yorum simülatörü</h2>
+      <div class="row">
+        <input id="user" value="Ayşe" maxlength="32" aria-label="Kullanıcı adı" />
+        <input id="text" placeholder="Yorum yaz, örn: SOL" maxlength="120" aria-label="Yorum" />
+        <button id="send">Gönder</button>
+      </div>
+      <div class="cmds">
+        <button data-cmd="GİR">GİR</button><button data-cmd="YUKARI">YUKARI</button><button data-cmd="GÖREV">GÖREV</button>
+        <button data-cmd="SOL">SOL</button><button data-cmd="AŞAĞI">AŞAĞI</button><button data-cmd="SAĞ">SAĞ</button>
+        <button data-cmd="KURTAR">KURTAR</button><button id="bots">5 bot ekle</button><button data-cmd="merhaba">Geçersiz</button>
+      </div>
+      <p class="hint">Klavye: ok tuşları ve boşluk (GÖREV), seçili kullanıcı adıyla hareket eder.</p>
+    </section>
+    <section class="card">
+      <h2>Oyun</h2>
+      <div class="row">
+        <button id="start" class="primary">Maçı başlat</button>
+        <button id="stop">Durdur</button>
+        <button id="reset" class="danger">Yeni lobi</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label for="difficulty" style="color:var(--muted);font-size:13px">Zorluk</label>
+        <select id="difficulty"><option value="easy">Kolay</option><option value="normal" selected>Normal</option><option value="hard">Zor</option></select>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Hediye (simülatör)</h2>
+      <div class="row">
+        <select id="gift" style="flex:1"></select>
+        <button id="gift-send">Gönder</button>
+      </div>
+      <p class="hint">Gül: hız · Kalp: kalkan · Aslan: katili güçlendirir · Evren: harita olayı</p>
+    </section>
+    <section class="card">
+      <h2>Durum</h2>
+      <div class="stats">
+        <div class="stat"><small>Faz</small><b id="s-phase">-</b></div>
+        <div class="stat"><small>Oyuncu</small><b id="s-players">0 / 20</b></div>
+        <div class="stat"><small>Jeneratör</small><b id="s-gens">0 / 4</b></div>
+        <div class="stat"><small>Kalan süre</small><b id="s-time">-</b></div>
+        <div class="stat" style="grid-column:span 2"><small>Sonuç</small><b id="s-winner">-</b></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Skor tablosu</h2>
+      <table><thead><tr><th>Oyuncu</th><th>Rol</th><th>Durum</th><th class="num">Puan</th></tr></thead><tbody id="players"></tbody></table>
+    </section>
+    <section class="card">
+      <h2>Olay günlüğü</h2>
+      <ol id="log"></ol>
+    </section>
+  </aside>
+</main>
+<script id="app"></script>
+</body>
+</html>

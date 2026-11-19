@@ -40,6 +40,12 @@ npm run loadtest     # 90 soketli yük testi (sunucuyu geçici olarak kendisi ba
 
 Geliştirmede panel anahtarı `dev-host-token` değeridir. Panelde "Giriş yap" ile girin.
 
+## Tek dosyalık prototip
+
+Sunucu ve kurulum gerektirmeyen bir demo: `npm run prototype` komutu `prototype/dist/canavar-avi-prototip.html`
+dosyasını üretir. Dosyayı herhangi bir tarayıcıda açın. Oyun kuralları gerçek `game-core` kodundan gelir,
+yorumlar simüle edilir.
+
 ## Yayıncı paneli
 
 1. Panelde yayıncı anahtarını girin. Anahtar yalnızca tarayıcı oturumunda saklanır.

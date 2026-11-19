@@ -15,7 +15,8 @@
     "build": "npm run build -w @ttl/overlay",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "dev:all": "node scripts/dev.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prototype": "node prototype/build.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
