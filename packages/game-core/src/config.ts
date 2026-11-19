@@ -86,3 +86,22 @@ export const GIFT = {
   blackoutTicks: 10 * TICK_RATE,
   surgeProgress: 20,
 } as const;
+
+/**
+ * Katilin gücü lobi büyüdükçe artar. Her "fazla" hayatta kalan (baseSurvivors üstü)
+ * katilin yakalama ve hareket beklemelerini bir çarpanla kısaltır. Alt sınırlar, katilin
+ * çok hızlı olup oyunu anlamsızlaştırmasını önler.
+ */
+export const KILLER_SCALING = {
+  /**
+   * Kapalı: büyük lobilerde ölçekleme henüz dengelenmedi. Bot simülasyonu bu ayarın
+   * her değerde ya hiç etki etmediğini ya da katili tamamen baskın yaptığını gösterdi.
+   * Açmadan önce gerçek oyuncularla test edin (bkz. README, Denge).
+   */
+  enabled: false,
+  baseSurvivors: 4,
+  /** Ekstra hareket aralığı: basePeriod - periodPerExtra * fazlaHayatta (tick). */
+  basePeriod: 20,
+  periodPerExtra: 3,
+  minPeriod: 4,
+} as const;

@@ -3,6 +3,7 @@ import {
   DAY_TICKS,
   DIFFICULTY,
   GENERATOR_COUNT,
+  KILLER_SCALING,
   GENERATOR_REQUIRED_PROGRESS,
   GIFT,
   MAP_HEIGHT,
@@ -171,7 +172,10 @@ export function step(world: GameWorld): void {
   world.queue = [];
   for (const intent of intents) apply(world, intent);
 
-  if (world.phase === 'playing') checkEnd(world);
+  if (world.phase === 'playing') {
+    killerFreeMove(world);
+    checkEnd(world);
+  }
 }
 
 /**
@@ -349,7 +353,65 @@ function move(world: GameWorld, p: Player, dir: Direction): void {
   p.cooldown = moveCooldown(world, p);
 }
 
-function moveCooldown(world: GameWorld, p: Player): number {
+/**
+ * Lobi büyüdükçe katil ekstra hareket kazanır: belirli aralıklarla, en yakın hayatta kalana
+ * doğru bir adım atar. Aralık, fazla hayatta kalan sayısına göre kısalır.
+ */
+function killerFreeMove(world: GameWorld): void {
+  if (!KILLER_SCALING.enabled) return;
+  const extra = killerExtraSurvivors(world);
+  if (extra <= 0) return;
+  const period = Math.max(KILLER_SCALING.minPeriod, KILLER_SCALING.basePeriod - KILLER_SCALING.periodPerExtra * extra);
+  if (world.tick % period !== 0) return;
+  const killer = Object.values(world.players).find((q) => q.role === 'killer' && !q.caught && q.x >= 0);
+  if (!killer) return;
+  const targets = Object.values(world.players).filter((q) => q.role === 'survivor' && !q.caught && q.x >= 0);
+  if (targets.length === 0) return;
+  const dir = stepToward(world, killer, (x, y) => targets.some((t) => manhattan({ x, y }, t) <= 1));
+  if (dir) {
+    const { dx, dy } = DELTAS[dir];
+    killer.x += dx;
+    killer.y += dy;
+  }
+}
+
+/** Hedefe giden en kısa yolun ilk adımı (BFS). Hedef zaten yakınsa null. */
+function stepToward(world: GameWorld, from: Position, isGoal: (x: number, y: number) => boolean): Direction | null {
+  if (isGoal(from.x, from.y)) return null;
+  const { width, height } = world.map;
+  const start = from.y * width + from.x;
+  const seen = new Uint8Array(width * height);
+  const first = new Int8Array(width * height).fill(-1);
+  const order: Direction[] = ['up', 'down', 'left', 'right'];
+  const queue = [start];
+  seen[start] = 1;
+  for (let qi = 0; qi < queue.length; qi++) {
+    const cur = queue[qi];
+    const cx = cur % width;
+    const cy = Math.floor(cur / width);
+    if (cur !== start && isGoal(cx, cy)) return order[first[cur]];
+    for (let d = 0; d < 4; d++) {
+      const { dx, dy } = DELTAS[order[d]];
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!isWalkable(world.map, nx, ny)) continue;
+      const idx = ny * width + nx;
+      if (seen[idx]) continue;
+      seen[idx] = 1;
+      first[idx] = cur === start ? d : first[cur];
+      queue.push(idx);
+    }
+  }
+  return null;
+}
+
+/** Lobideki hayatta kalan sayısının, katilin ölçekleme eşiğini aşan kısmı. */
+function killerExtraSurvivors(world: GameWorld): number {
+  const survivors = Object.values(world.players).filter((q) => q.role === 'survivor').length;
+  return Math.max(0, survivors - KILLER_SCALING.baseSurvivors);
+}
+
+export function moveCooldown(world: GameWorld, p: Player): number {
   let cd: number;
   if (p.role === 'survivor') {
     cd = MOVE_COOLDOWN_SURVIVOR;

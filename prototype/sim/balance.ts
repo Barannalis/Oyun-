@@ -5,6 +5,10 @@
 import {
   MATCH_TICKS,
   TICK_RATE,
+  MOVE_COOLDOWN_KILLER_DAY,
+  MOVE_COOLDOWN_KILLER_NIGHT,
+  isNight,
+  moveCooldown,
   addPlayer,
   createWorld,
   enqueue,
@@ -45,7 +49,9 @@ export function runMatch(seed: number, players: number, tuning: BotTuning): Resu
   while (w.phase === 'playing' && w.tick <= MATCH_TICKS + 5) {
     bots.forEach((bot, i) => {
       if (bot.caught || bot.x < 0) return;
-      const every = bot.role === 'killer' ? tuning.killerEvery : tuning.survivorEvery;
+      // Katil karar aralığı, ölçeklenmiş hareket hızının temel hıza oranıyla orantılıdır.
+      const base = isNight(w.tick) ? MOVE_COOLDOWN_KILLER_NIGHT : MOVE_COOLDOWN_KILLER_DAY;
+      const every = bot.role === 'killer' ? Math.max(2, Math.round((tuning.killerEvery * moveCooldown(w, bot)) / base)) : tuning.survivorEvery;
       if ((w.tick + phase[i]) % every !== 0) return;
       const cmd = decide(w, bot, tuning, rand);
       if (cmd) enqueue(w, bot.name, cmd);

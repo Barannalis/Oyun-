@@ -79,7 +79,11 @@ Dosyaları herhangi bir tarayıcıda açın. Oyun kuralları gerçek `game-core`
 - Hayatta kalanlar %50,5, katil %49,5 kazanıyor.
 - Maç süresi ortalama 1,3 dakika, maç başına ~2,1 yakalama ve ~0,5 kurtarma.
 
-Bilinen sınır: 8 oyuncuda hayatta kalanlar yaklaşık %81 kazanıyor, çünkü tek katil büyük lobiyi kaldıramıyor. Jeneratör sayısını artırmak bunu düzeltmedi. Büyük lobiler için ikinci katil veya katilin ölçeklenmesi gerekir. Bu bir tasarım kararı.
+Bilinen sınır: 8 oyuncuda hayatta kalanlar yaklaşık %81 kazanıyor. Katilin lobi büyüdükçe güçlenmesi için
+motorda `KILLER_SCALING` mekanizması var (ekstra katil hareketi), ama varsayılan olarak **kapalı**.
+Simülasyon, bu mekanizmanın ya hiç etki etmediğini ya da katili tamamen baskın yaptığını gösterdi:
+kovalama bir eşikte duruyor ve bot modeli bu eşiği gerçek oyuncu davranışına göre ayarlamaya yeterli değil.
+Büyük lobiler için gerçek oyuncularla test yapılmalı.
 
 ### Hediyeler
 
