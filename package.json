@@ -1,0 +1,16 @@
+{
+  "name": "global-betting-platform",
+  "version": "0.1.0",
+  "description": "Country-neutral, multi-jurisdiction betting platform. Virtual-money MVP; real-money infrastructure gated per jurisdiction.",
+  "private": true,
+  "type": "module",
+  "license": "CC0-1.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed-demo.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  }
+}

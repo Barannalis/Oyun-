@@ -31,3 +31,11 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Node / platform runtime
+node_modules/
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
