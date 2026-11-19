@@ -65,13 +65,21 @@ Dosyaları herhangi bir tarayıcıda açın. Oyun kuralları gerçek `game-core`
 
 - Katil rastgele seçilir. Diğerleri hayatta kalanlardır. En az 2, en fazla 20 oyuncu.
 - Hayatta kalanlar 4 jeneratörü çalıştırmaya çalışır. Komşu karede `GÖREV` ile ilerlenir.
-- Katil komşu hayatta kalanı `GÖREV` ile yakalar. Yakalananı `KURTAR` ile 5 kez kurtarmak gerekir.
+- Katil komşu hayatta kalanı `GÖREV` ile yakalar. Yakalananı `KURTAR` ile 3 kez kurtarmak gerekir.
 - Kurtarılan oyuncu 3 saniye boyunca tekrar yakalanamaz.
 - Gündüz 90 sn, gece 60 sn. Gece görüş alanı daralır.
 - Bitiş: tüm jeneratörler çalışırsa hayatta kalanlar kazanır. Tüm hayatta kalanlar yakalanırsa veya 5 dakika
   dolarsa katil kazanır. Yayıncı durdurursa kazanan yoktur.
 - Zorluk: kolay / normal / zor. Görev ilerlemesi, yakalama beklemesi ve katilin hızını değiştirir.
 - Yorum hız sınırı: kullanıcı başına en fazla 6 ardışık yorum, saniyede 4 yenileme.
+
+### Denge (prototip ölçümü)
+
+`npx tsx prototype/sim/balance.ts <maç> <oyuncu>` botlarla maçları hızlıca simüle eder. Son ölçüm (normal zorluk, 1000 maç, 5 oyuncu):
+- Hayatta kalanlar %50,5, katil %49,5 kazanıyor.
+- Maç süresi ortalama 1,3 dakika, maç başına ~2,1 yakalama ve ~0,5 kurtarma.
+
+Bilinen sınır: 8 oyuncuda hayatta kalanlar yaklaşık %81 kazanıyor, çünkü tek katil büyük lobiyi kaldıramıyor. Jeneratör sayısını artırmak bunu düzeltmedi. Büyük lobiler için ikinci katil veya katilin ölçeklenmesi gerekir. Bu bir tasarım kararı.
 
 ### Hediyeler
 

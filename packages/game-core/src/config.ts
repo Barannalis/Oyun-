@@ -38,7 +38,7 @@ export const CATCH_COOLDOWN = 20;
 export const RESCUE_COOLDOWN = 20;
 
 // Kurtarma: yakalanan oyuncu kaç KURTAR komutuyla serbest kalır
-export const RESCUE_REQUIRED = 5;
+export const RESCUE_REQUIRED = 3;
 // Kurtarılan oyuncunun tekrar yakalanmama süresi
 export const RESCUE_IMMUNITY_TICKS = 60;
 
