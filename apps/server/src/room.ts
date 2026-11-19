@@ -21,6 +21,7 @@ import {
   type GameWorld,
   type HelloResult,
   type InitMessage,
+  type SourceInfo,
   type StateMessage,
 } from '@ttl/game-core';
 import { KeyedRateLimiter } from './rateLimit';
@@ -50,6 +51,7 @@ export class GameRoom {
   private readonly timers: NodeJS.Timeout[] = [];
   private outbox: GameEvent[] = [];
   private readonly graceMs: number;
+  private sourceInfo: SourceInfo = { name: 'tiktok', status: 'disabled' };
 
   constructor(
     private readonly out: Outbound,
@@ -63,8 +65,18 @@ export class GameRoom {
     return this.current;
   }
 
+  get source(): SourceInfo {
+    return this.sourceInfo;
+  }
+
+  /** Yorum kaynağının durumunu günceller ve bağlı herkese yayınlar. */
+  setSource(info: SourceInfo): void {
+    this.sourceInfo = info;
+    this.out.emit('source', info);
+  }
+
   initPayload(): InitMessage {
-    return { map: this.current.map, state: toPublicState(this.current) };
+    return { map: this.current.map, state: toPublicState(this.current), source: this.sourceInfo };
   }
 
   start(): void {

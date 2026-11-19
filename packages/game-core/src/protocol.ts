@@ -38,9 +38,19 @@ export interface PublicState {
   winReason: WinReason | null;
 }
 
+export type SourceStatus = 'disabled' | 'idle' | 'connecting' | 'connected' | 'offline' | 'error';
+
+/** Yorum kaynağının (ör. TikTok adaptörü) durumu. Yayıncı paneline gösterilir. */
+export interface SourceInfo {
+  name: string;
+  status: SourceStatus;
+  detail?: string;
+}
+
 export interface InitMessage {
   map: MapData;
   state: PublicState;
+  source: SourceInfo;
 }
 
 export interface StateMessage {

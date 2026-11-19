@@ -5,6 +5,7 @@ import {
   type AckResult,
   type EventsMessage,
   type InitMessage,
+  type SourceInfo,
   type StateMessage,
 } from '@ttl/game-core';
 import { errorText, pushLog } from '../format';
@@ -34,10 +35,14 @@ export class RoomClient {
     });
     this.socket.on('init', (init: InitMessage) => {
       session.world = worldFromInit(init);
+      session.source = init.source;
       session.pending.length = 0;
     });
     this.socket.on('state', (msg: StateMessage) => {
       if (session.world) applyPublicState(session.world, msg.state);
+    });
+    this.socket.on('source', (info: SourceInfo) => {
+      session.source = info;
     });
     this.socket.on('events', (msg: EventsMessage) => {
       for (const e of msg.events) session.pending.push(e);

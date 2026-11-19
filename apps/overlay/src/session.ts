@@ -1,4 +1,4 @@
-import type { GameEvent, GameWorld } from '@ttl/game-core';
+import type { GameEvent, GameWorld, SourceInfo } from '@ttl/game-core';
 
 /**
  * Oyun ekranı ile ağ istemcisi arasında paylaşılan durum.
@@ -9,8 +9,9 @@ export interface Session {
   pending: GameEvent[];
   log: string[];
   connected: boolean;
+  source: SourceInfo | null;
 }
 
 export function createSession(): Session {
-  return { world: null, pending: [], log: [], connected: false };
+  return { world: null, pending: [], log: [], connected: false, source: null };
 }

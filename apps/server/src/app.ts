@@ -4,6 +4,14 @@ import type { AddressInfo } from 'node:net';
 import { Server, type Socket } from 'socket.io';
 import { MAX_CHAT_LENGTH, type AckResult, type HelloRequest, type HelloResult } from '@ttl/game-core';
 import { GameRoom } from './room';
+import { TikTokChatSource, type ChatConnection } from './sources/tiktokSource';
+
+export interface TikTokOptions {
+  uniqueId: string;
+  createConnection: (uniqueId: string) => ChatConnection;
+  retryBaseMs?: number;
+  retryMaxMs?: number;
+}
 
 export interface AppOptions {
   port: number;
@@ -12,6 +20,8 @@ export interface AppOptions {
   corsOrigins: string[];
   seed?: number;
   reconnectGraceMs?: number;
+  /** Verilmezse TikTok adaptörü hiç başlatılmaz. */
+  tiktok?: TikTokOptions;
 }
 
 export interface App {
@@ -116,8 +126,25 @@ export async function createApp(opts: AppOptions): Promise<App> {
     socket.on('disconnect', () => room.onSocketDisconnect(socket.id));
   });
 
+  let source: TikTokChatSource | null = null;
+  if (opts.tiktok) {
+    const t = opts.tiktok;
+    source = new TikTokChatSource({
+      uniqueId: t.uniqueId,
+      createConnection: t.createConnection,
+      retryBaseMs: t.retryBaseMs,
+      retryMaxMs: t.retryMaxMs,
+      onStatus: (info) => room.setSource(info),
+    });
+    // TikTok yorumları, simülatör ve soket komutlarıyla aynı girişten geçer.
+    source.subscribe((m) => {
+      room.submitChat(m.user, m.text);
+    });
+  }
+
   room.start();
   await new Promise<void>((resolve) => httpServer.listen(opts.port, opts.host ?? '127.0.0.1', resolve));
+  source?.start();
 
   return {
     room,
@@ -126,6 +153,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       return `http://${opts.host ?? '127.0.0.1'}:${addr.port}`;
     },
     close: async () => {
+      source?.stop();
       room.stop();
       await io.close();
     },

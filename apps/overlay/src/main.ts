@@ -79,7 +79,8 @@ function renderPanel(world: GameWorld | null): void {
   } else {
     renderWorldPanel(world);
   }
-  $('conn').textContent = session.connected ? 'Bağlı' : 'Bağlantı yok';
+  $('conn').textContent = session.connected ? 'Sunucu bağlı' : 'Sunucu bağlantısı yok';
+  $('src').textContent = sourceLabel(session.source);
   $('conn').className = session.connected ? 'ok' : 'bad';
 
   const logEl = $('log');
@@ -88,6 +89,20 @@ function renderPanel(world: GameWorld | null): void {
     logEl.dataset.count = String(session.log.length);
     logEl.scrollTop = logEl.scrollHeight;
   }
+}
+
+const SOURCE_TEXT: Record<string, string> = {
+  disabled: 'TikTok kapalı',
+  idle: 'TikTok beklemede',
+  connecting: 'TikTok bağlanıyor',
+  connected: 'TikTok yayında',
+  offline: 'TikTok yayını kapalı',
+  error: 'TikTok hatası',
+};
+
+function sourceLabel(info: { status: string; detail?: string } | null): string {
+  if (!info) return '';
+  return SOURCE_TEXT[info.status] ?? info.status;
 }
 
 function renderWorldPanel(world: GameWorld): void {

@@ -59,7 +59,7 @@ describe('genel durum (protokol)', () => {
     startMatch(server);
 
     const state = toPublicState(server);
-    const client = worldFromInit({ map: server.map, state });
+    const client = worldFromInit({ map: server.map, state, source: { name: 'tiktok', status: 'disabled' } });
     expect(client.map).toBe(server.map);
     expect(client.players.ali.role).toBe(server.players.ali.role);
 
