@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GIFT, MOVE_COOLDOWN_SURVIVOR } from '../src/config';
-import { isDark, isNight, startMatch, step, addPlayer, createWorld, enqueue, litTiles, visionRadius } from '../src/world';
+import { isDark, isNight, setDifficulty, startMatch, step, stopMatch, addPlayer, createWorld, enqueue, litTiles, visionRadius } from '../src/world';
 import { DAY_TICKS, VISION } from '../src/config';
 import type { GameEvent, GameWorld, GiftTier, Player } from '../src/types';
 
@@ -179,5 +179,45 @@ describe('hediye kuralları genel', () => {
     step(w);
     expect(s.speedTicks).toBe(2);
     expect(s.shieldTicks).toBe(1);
+  });
+});
+
+describe('yayıncı kontrolleri (zorluk ve durdurma)', () => {
+  it('zorluk yalnızca lobide değiştirilebilir', () => {
+    const w = createWorld(31);
+    addPlayer(w, 'A');
+    addPlayer(w, 'B');
+    expect(setDifficulty(w, 'hard')).toBe(true);
+    startMatch(w);
+    expect(setDifficulty(w, 'easy')).toBe(false);
+    expect(w.difficulty).toBe('hard');
+  });
+
+  it('zor modda görev ilerlemesi daha azdır', () => {
+    const w = started(32, ['Ali', 'Ayşe']);
+    w.difficulty = 'hard';
+    const s = role(w, 'survivor');
+    const gen = w.generators[0];
+    s.x = gen.x;
+    s.y = gen.y;
+    w.map.tiles.fill(0);
+    const neighbour = [
+      { x: gen.x + 1, y: gen.y }, { x: gen.x - 1, y: gen.y }, { x: gen.x, y: gen.y + 1 }, { x: gen.x, y: gen.y - 1 },
+    ].find((c) => c.x > 0 && c.y > 0 && c.x < w.map.width - 1 && c.y < w.map.height - 1) as { x: number; y: number };
+    s.x = neighbour.x;
+    s.y = neighbour.y;
+    s.cooldown = 0;
+    enqueue(w, s.name, { type: 'task' });
+    step(w);
+    expect(gen.progress).toBe(8);
+  });
+
+  it('maç durdurulunca kazanan olmadan biter', () => {
+    const w = started(33, ['Ali', 'Ayşe']);
+    expect(stopMatch(w)).toBe(true);
+    expect(w.phase).toBe('ended');
+    expect(w.winner).toBeNull();
+    expect(w.winReason).toBe('host-stopped');
+    expect(stopMatch(w)).toBe(false);
   });
 });

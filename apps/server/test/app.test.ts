@@ -52,6 +52,7 @@ const EMPTY_STATE = {
   winReason: null,
   bossTicks: 0,
   blackoutTicks: 0,
+  difficulty: 'normal',
 } as StateMessage['state'];
 
 /** Henüz durum gelmediyse boş lobi döner, böylece waitFor tekrar dener. */

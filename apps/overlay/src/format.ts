@@ -21,6 +21,7 @@ export const REASON_LABEL: Record<WinReason, string> = {
   'generators-done': 'Tüm jeneratörler çalıştırıldı',
   'all-caught': 'Tüm hayatta kalanlar yakalandı',
   timeout: 'Süre doldu',
+  'host-stopped': 'Yayıncı maçı durdurdu',
 };
 
 const ERROR_TEXT: Record<ErrorReason, string> = {
@@ -37,6 +38,8 @@ const ERROR_TEXT: Record<ErrorReason, string> = {
   queue_full: 'Sunucu yoğun, komut atılamadı',
   unknown_command: 'Tanınmayan komut',
   unknown_gift: 'Bu hediye için eşleme yok (panelden ekleyin)',
+  blocked: 'Bu oyuncu yayıncı tarafından engellendi',
+  not_playing: 'Durdurulacak aktif bir maç yok',
   not_joined: 'Önce oyuna katılın (GİR)',
 };
 
@@ -69,6 +72,7 @@ export function describeEvent(world: GameWorld, e: GameEvent): string {
     case 'gift-ignored':
       return `${name(e.by)} hediyesi (${GIFT_TIER_LABELS[e.tier]}) bu oyunda etki yaratmadı`;
     case 'ended':
+      if (e.winner === null) return 'Oyun yayıncı tarafından durduruldu';
       return `Oyun bitti: ${e.winner === 'survivors' ? 'Hayatta kalanlar' : 'Katil'} kazandı (${REASON_LABEL[e.reason]})`;
   }
 }

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   CHAT_BUCKET_CAPACITY,
   CHAT_REFILL_PER_SEC,
@@ -8,6 +8,8 @@ import {
   addPlayer,
   createWorld,
   enqueue,
+  setDifficulty as setWorldDifficulty,
+  stopMatch as stopWorldMatch,
   parseCommand,
   removePlayer,
   setConnected,
@@ -16,7 +18,9 @@ import {
   toPublicState,
   userKey,
   type AckResult,
+  type Difficulty,
   type EventsMessage,
+  type HostStatus,
   type GameEvent,
   type GameWorld,
   type HelloResult,
@@ -30,6 +34,10 @@ import { KeyedRateLimiter } from './rateLimit';
 import type { GiftStore } from './giftStore';
 
 /** Odanın dışarıya yayın yaptığı tek kanal. Gerçek uygulamada Socket.IO sunucusu. */
+function newRoomId(): string {
+  return randomBytes(9).toString('base64url');
+}
+
 export interface Outbound {
   emit(event: string, payload: unknown): void;
 }
@@ -56,6 +64,9 @@ export class GameRoom {
   private outbox: GameEvent[] = [];
   private readonly graceMs: number;
   private sourceInfo: SourceInfo = { name: 'tiktok', status: 'disabled' };
+  private roomIdValue: string = newRoomId();
+  /** Engellenen oyuncuların anahtarları ve görünen adları. */
+  private readonly blocked = new Map<string, string>();
   private readonly gifts: GiftStore;
 
   constructor(
@@ -81,8 +92,17 @@ export class GameRoom {
     this.out.emit('source', info);
   }
 
+  get roomId(): string {
+    return this.roomIdValue;
+  }
+
   initPayload(): InitMessage {
-    return { map: this.current.map, state: toPublicState(this.current), source: this.sourceInfo };
+    return {
+      map: this.current.map,
+      state: toPublicState(this.current),
+      source: this.sourceInfo,
+      roomId: this.roomIdValue,
+    };
   }
 
   start(): void {
@@ -99,6 +119,7 @@ export class GameRoom {
 
   /** Soket üzerinden kullanıcı adıyla katılım. Token varsa yeniden bağlanır. */
   hello(name: string, token?: string): HelloResult {
+    if (this.blocked.has(userKey(name))) return { ok: false, reason: 'blocked' };
     if (token !== undefined) {
       const key = this.tokenToKey.get(token);
       if (key !== undefined) {
@@ -166,6 +187,7 @@ export class GameRoom {
    */
   submitChat(user: string, text: string): AckResult {
     const key = userKey(user);
+    if (this.blocked.has(key)) return { ok: false, reason: 'blocked' };
     if (!this.limiter.take(key)) return { ok: false, reason: 'rate_limited' };
     const command = parseCommand(text);
     if (!command) return { ok: false, reason: 'unknown_command' };
@@ -177,6 +199,7 @@ export class GameRoom {
    * reddedilir. Hediye hız sınırına tabi değildir, çünkü her hediye bir ödemedir.
    */
   submitGift(user: string, giftName: string): AckResult {
+    if (this.blocked.has(userKey(user))) return { ok: false, reason: 'blocked' };
     const tier = this.gifts.resolve(giftName);
     if (!tier) return { ok: false, reason: 'unknown_gift' };
     const queued = enqueue(this.current, user, { type: 'gift', tier, giftName: giftName.trim() });
@@ -202,9 +225,55 @@ export class GameRoom {
     return { ok: true };
   }
 
-  /** Yeni lobi. Tüm oyuncu kimlikleri silinir, istemciler yeniden katılmalıdır. */
+  /** Yayıncı: oyuncuyu engeller. Lobideyse hemen çıkarılır, maçtaysa komutları kabul edilmez. */
+  blockPlayer(name: string): AckResult {
+    const key = userKey(name);
+    if (key.length === 0) return { ok: false, reason: 'invalid_request' };
+    const displayName = this.current.players[key]?.name ?? name.trim();
+    this.blocked.set(key, displayName);
+    if (this.current.phase === 'lobby') {
+      this.forget(key);
+      removePlayer(this.current, key);
+    }
+    this.broadcastState();
+    return { ok: true };
+  }
+
+  unblockPlayer(name: string): AckResult {
+    this.blocked.delete(userKey(name));
+    return { ok: true };
+  }
+
+  changeDifficulty(difficulty: Difficulty): AckResult {
+    return setWorldDifficulty(this.current, difficulty)
+      ? { ok: true }
+      : { ok: false, reason: 'match_already_started' };
+  }
+
+  /** Yayıncı maçı durdurur. Olay hemen yayınlanır, bir sonraki tick'i beklemez. */
+  endMatch(): AckResult {
+    if (!stopWorldMatch(this.current)) return { ok: false, reason: 'not_playing' };
+    this.outbox.push(...this.current.events);
+    this.current.events = [];
+    this.flushEvents();
+    this.broadcastState();
+    return { ok: true };
+  }
+
+  status(): HostStatus {
+    return {
+      roomId: this.roomIdValue,
+      phase: this.current.phase,
+      difficulty: this.current.difficulty,
+      blocked: [...this.blocked.entries()].map(([key, name]) => ({ key, name })),
+    };
+  }
+
+  /** Yeni lobi ve yeni oda kimliği. Eski yayın bağlantıları geçersiz olur. */
   reset(seed: number): void {
     for (const key of [...this.removalTimers.keys()]) this.cancelRemoval(key);
+    this.roomIdValue = newRoomId();
+    this.blocked.clear();
     this.tokenToKey.clear();
     this.keyToToken.clear();
     this.socketToKey.clear();

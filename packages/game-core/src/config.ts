@@ -58,6 +58,13 @@ export const VISION = {
   killerNight: 6,
 } as const;
 
+/** Zorluk ayarları. Normal, temel değerlerle aynıdır. */
+export const DIFFICULTY = {
+  easy: { killerMoveDelta: 1, catchCooldown: 30, taskProgress: 12 },
+  normal: { killerMoveDelta: 0, catchCooldown: 20, taskProgress: 10 },
+  hard: { killerMoveDelta: -1, catchCooldown: 12, taskProgress: 8 },
+} as const;
+
 export const SCORE = {
   task: 1,
   catch: 5,

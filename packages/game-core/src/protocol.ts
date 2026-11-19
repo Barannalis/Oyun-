@@ -14,6 +14,7 @@
  *   host:*     → yayıncı paneli (host token gerekir)
  */
 import type {
+  Difficulty,
   GameEvent,
   GameWorld,
   Generator,
@@ -39,6 +40,8 @@ export type ErrorReason =
   | 'queue_full'
   | 'unknown_command'
   | 'unknown_gift'
+  | 'blocked'
+  | 'not_playing'
   | 'not_joined';
 
 export type SourceStatus = 'disabled' | 'idle' | 'connecting' | 'connected' | 'offline' | 'error';
@@ -60,12 +63,14 @@ export interface PublicState {
   winReason: WinReason | null;
   bossTicks: number;
   blackoutTicks: number;
+  difficulty: Difficulty;
 }
 
 export interface InitMessage {
   map: MapData;
   state: PublicState;
   source: SourceInfo;
+  roomId: string;
 }
 
 export interface StateMessage {
@@ -85,6 +90,12 @@ export interface GiftEntry {
 export interface GiftsMessage {
   gifts: GiftEntry[];
 }
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy: 'Kolay',
+  normal: 'Normal',
+  hard: 'Zor',
+};
 
 export const GIFT_TIER_LABELS: Record<GiftTier, string> = {
   small: 'Küçük · hız bonusu',
@@ -118,6 +129,21 @@ export interface HostGiftRequest extends HostRequest {
   giftName: string;
 }
 
+export interface HostStatus {
+  roomId: string;
+  phase: Phase;
+  difficulty: Difficulty;
+  blocked: Array<{ key: string; name: string }>;
+}
+
+export interface HostDifficultyRequest extends HostRequest {
+  difficulty: Difficulty;
+}
+
+export interface HostNameRequest extends HostRequest {
+  name: string;
+}
+
 export interface HostGiftSetRequest extends HostRequest {
   name: string;
   tier: GiftTier;
@@ -138,6 +164,7 @@ export function toPublicState(world: GameWorld): PublicState {
     winReason: world.winReason,
     bossTicks: world.bossTicks,
     blackoutTicks: world.blackoutTicks,
+    difficulty: world.difficulty,
   };
 }
 
@@ -157,6 +184,7 @@ export function worldFromInit(init: InitMessage): GameWorld {
     winReason: init.state.winReason,
     bossTicks: init.state.bossTicks,
     blackoutTicks: init.state.blackoutTicks,
+    difficulty: init.state.difficulty,
   };
 }
 
@@ -170,4 +198,5 @@ export function applyPublicState(world: GameWorld, state: PublicState): void {
   world.winReason = state.winReason;
   world.bossTicks = state.bossTicks;
   world.blackoutTicks = state.blackoutTicks;
+  world.difficulty = state.difficulty;
 }

@@ -325,9 +325,13 @@ export class GameScene extends Phaser.Scene {
           : `Lobi: ${shown}\nBaşlatmak için paneli kullanın (en az 2 oyuncu).`,
       );
       this.banner.setVisible(true);
-    } else if (world.phase === 'ended' && world.winner && world.winReason) {
-      const winner = world.winner === 'survivors' ? 'HAYATTA KALANLAR' : 'KATİL';
-      this.banner.setText(`KAZANAN: ${winner}\n${REASON_LABEL[world.winReason]}`);
+    } else if (world.phase === 'ended' && world.winReason) {
+      if (world.winner === null) {
+        this.banner.setText(`MAÇ DURDURULDU\n${REASON_LABEL[world.winReason]}`);
+      } else {
+        const winner = world.winner === 'survivors' ? 'HAYATTA KALANLAR' : 'KATİL';
+        this.banner.setText(`KAZANAN: ${winner}\n${REASON_LABEL[world.winReason]}`);
+      }
       this.banner.setVisible(true);
     } else {
       this.banner.setVisible(false);

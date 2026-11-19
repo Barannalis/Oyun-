@@ -3,116 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CANAVAR AVI · Oyun Ekranı</title>
+    <title>CANAVAR AVI · Yayıncı Paneli</title>
     <link rel="icon" href="data:," />
     <style>
       :root {
         color-scheme: dark;
-        --bg: #05070b;
-        --panel: #0d121a;
-        --panel-2: #131a24;
-        --line: #1f2a38;
-        --text: #d8dee9;
-        --muted: #7b8798;
-        --accent: #ff4d4d;
-        --accent-2: #4fc3f7;
-        --ok: #3ddc84;
-      }
-      @media (prefers-color-scheme: light) {
-        :root:not([data-theme='dark']) {
-          color-scheme: dark;
-        }
+        --bg: #05070b; --panel: #0d121a; --panel-2: #131a24; --line: #1f2a38;
+        --text: #d8dee9; --muted: #7b8798; --accent: #ff4d4d; --accent-2: #4fc3f7; --ok: #3ddc84; --warn: #ffd66b;
       }
       * { box-sizing: border-box; }
       html, body { margin: 0; background: var(--bg); color: var(--text); }
-      body {
-        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-        min-height: 100vh;
-      }
+      body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; }
       header {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--line);
+        padding: 14px 16px; border-bottom: 1px solid var(--line);
         display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
       }
       header h1 { margin: 0; font-size: 18px; letter-spacing: 0.08em; }
       header span { color: var(--muted); font-size: 13px; }
-      .layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 340px;
-        gap: 16px;
-        padding: 16px;
-        align-items: start;
-      }
-      .stage-wrap {
-        background: #000;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        overflow: hidden;
-        aspect-ratio: 868 / 572;
-        width: 100%;
-      }
-      #stage { width: 100%; height: 100%; }
-      #stage canvas { display: block; margin: 0 auto; }
-      aside { display: grid; gap: 12px; }
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 12px;
-      }
-      .card h2 {
-        margin: 0 0 10px;
-        font-size: 12px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--muted);
-        font-weight: 600;
-      }
-      .stats {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-      }
-      .stat {
-        background: var(--panel-2);
-        border-radius: 8px;
-        padding: 8px 10px;
-      }
+      .status { margin-left: auto; display: flex; gap: 12px; font-size: 13px; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; padding: 16px; align-items: start; }
+      .column { display: grid; gap: 12px; align-content: start; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+      .card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
       .stat small { display: block; color: var(--muted); font-size: 11px; }
       .stat b { font-size: 15px; }
       .stat.wide { grid-column: span 2; }
-      .row { display: flex; gap: 8px; flex-wrap: wrap; }
-      .row input[type='text'], input#user, input#text {
-        background: var(--panel-2);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        color: var(--text);
-        padding: 9px 10px;
-        font-size: 14px;
-        min-width: 0;
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      input[type='text'], input[type='password'], input[type='url'], select {
+        background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+        color: var(--text); padding: 9px 10px; font-size: 14px; min-width: 0;
       }
-      input#user { width: 120px; }
-      input#text { flex: 1; }
-      select {
-        background: var(--panel-2);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        color: var(--text);
-        padding: 9px 10px;
-        font-size: 14px;
-        min-width: 0;
-        max-width: 100%;
-      }
+      input[type='text'], input[type='password'], input[type='url'] { flex: 1; }
+      input[type='text'] { min-width: 140px; }
+      .row select { flex: 0 1 auto; max-width: 100%; }
       button {
-        background: var(--panel-2);
-        color: var(--text);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 8px 10px;
-        font-size: 13px;
-        cursor: pointer;
+        background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+        border-radius: 8px; padding: 8px 10px; font-size: 13px; cursor: pointer; white-space: nowrap;
       }
       button:hover { border-color: var(--accent-2); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
       button.primary { background: #1d3a4d; border-color: var(--accent-2); }
       button.danger { border-color: var(--accent); }
       .cmds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
@@ -122,33 +53,71 @@
       th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
       td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
       .muted { color: var(--muted); }
-      #conn.ok { color: var(--ok); }
-      #conn.bad { color: var(--accent); }
-      .scroll { max-height: 280px; overflow-y: auto; }
-      .table-scroll { max-height: 240px; overflow-y: auto; }
+      .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+      .notice { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
+      .notice.warn { color: var(--warn); }
+      .notice.ok { color: var(--ok); }
+      .notice.bad { color: var(--accent); }
+      .table-scroll { max-height: 280px; overflow-y: auto; }
+      .scroll { max-height: 240px; overflow-y: auto; }
       ol#log { list-style: none; margin: 0; padding: 0; font-size: 12.5px; line-height: 1.5; }
       ol#log li { border-bottom: 1px dashed var(--line); padding: 3px 0; word-break: break-word; }
-      .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-
-      @media (max-width: 900px) {
-        .layout { grid-template-columns: 1fr; padding: 12px; }
-      }
+      iframe#preview { width: 100%; aspect-ratio: 868 / 572; border: 0; border-radius: 8px; background: #000; }
+      @media (max-width: 960px) { .layout { grid-template-columns: 1fr; padding: 12px; } }
     </style>
   </head>
   <body>
     <header>
       <h1>CANAVAR AVI</h1>
-      <span>Oyun ekranı ve yayıncı paneli · Aşama 3</span>
-      <span id="src" class="muted" style="margin-left:auto"></span>
-      <span id="conn" class="bad">Sunucu bağlantısı yok</span>
+      <span>Yayıncı paneli · Aşama 6</span>
+      <div class="status">
+        <span id="src" class="muted"></span>
+        <span id="conn" class="bad">Sunucu bağlantısı yok</span>
+      </div>
     </header>
 
     <main class="layout">
-      <section class="stage-wrap">
-        <div id="stage"></div>
-      </section>
+      <div class="column">
+        <section class="card" id="auth-card">
+          <h2>Yayıncı girişi</h2>
+          <div class="row">
+            <input id="token" type="password" placeholder="Yayıncı anahtarı" autocomplete="off" aria-label="Yayıncı anahtarı" />
+            <button id="login" class="primary">Giriş yap</button>
+            <button id="logout">Çıkış</button>
+          </div>
+          <p id="auth-status" class="notice warn" style="margin:10px 0 0">Anahtar girilmedi. Oyun kontrolleri için giriş yapın.</p>
+          <p class="hint">Anahtar yalnızca bu tarayıcı oturumunda saklanır. Yayın ekranına (overlay) gömülmez.</p>
+        </section>
 
-      <aside>
+        <section class="card">
+          <h2>Yayın bağlantısı (OBS / LIVE Studio)</h2>
+          <div class="row">
+            <input id="overlay-url" type="url" readonly aria-label="Yayın bağlantısı" placeholder="Giriş yapınca oluşur" />
+            <button id="copy-url">Kopyala</button>
+            <button id="open-url">Aç</button>
+          </div>
+          <p class="hint">Bu bağlantıyı tarayıcı kaynağı olarak ekleyin. "Yeni oda" yapılırsa bu bağlantı geçersiz olur ve yeniden kopyalamanız gerekir.</p>
+          <div style="margin-top:10px"><iframe id="preview" title="Yayın ekranı önizlemesi"></iframe></div>
+        </section>
+
+        <section class="card">
+          <h2>Oyun kontrolü</h2>
+          <div class="row">
+            <button id="start" class="primary">Maçı başlat</button>
+            <button id="stop">Maçı durdur</button>
+            <button id="reset" class="danger">Yeni oda</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label for="difficulty" class="muted" style="font-size:13px">Zorluk</label>
+            <select id="difficulty" aria-label="Zorluk">
+              <option value="easy">Kolay</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Zor</option>
+            </select>
+            <span class="muted" style="font-size:12px">Yalnızca lobide değiştirilebilir.</span>
+          </div>
+        </section>
+
         <section class="card">
           <h2>Durum</h2>
           <div class="stats">
@@ -156,14 +125,31 @@
             <div class="stat"><small>Oyuncu</small><b id="stat-players">0 / 20</b></div>
             <div class="stat"><small>Jeneratör</small><b id="stat-gens">0 / 4</b></div>
             <div class="stat"><small>Yakalanan</small><b id="stat-caught">-</b></div>
+            <div class="stat"><small>Kalan süre</small><b id="stat-time">-</b></div>
+            <div class="stat"><small>Zorluk</small><b id="stat-difficulty">-</b></div>
             <div class="stat wide"><small>Sonuç</small><b id="stat-winner">-</b></div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <button id="start" class="primary">Maçı başlat</button>
-            <button id="reset" class="danger">Yeni lobi</button>
           </div>
         </section>
 
+        <section class="card">
+          <h2>Oyuncular ve skor tablosu</h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Oyuncu</th><th>Rol</th><th>Durum</th><th class="num">Puan</th><th class="num"></th></tr>
+              </thead>
+              <tbody id="players"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Engellenenler</h2>
+          <div id="blocked" class="muted" style="font-size:13px">Engelli oyuncu yok.</div>
+        </section>
+      </div>
+
+      <div class="column">
         <section class="card">
           <h2>Yorum simülatörü</h2>
           <div class="row">
@@ -182,7 +168,7 @@
             <button id="bots">5 bot ekle</button>
             <button data-cmd="merhaba">Geçersiz yorum</button>
           </div>
-          <p class="hint">Komutlar seçili kullanıcı adıyla gönderilir. Geçersiz yorumlar yok sayılır.</p>
+          <p class="hint">Komutlar seçili kullanıcı adıyla sunucuya gider. Geçersiz yorumlar yok sayılır.</p>
         </section>
 
         <section class="card">
@@ -191,16 +177,14 @@
             <select id="gift-send" aria-label="Hediye" style="flex:1"></select>
             <button id="gift-send-btn">Gönder</button>
           </div>
-          <p class="hint">Gönderen, yukarıdaki kullanıcı adıdır. Küçük hediye hız, orta hediye kalkan verir. Büyük hediye katili, özel hediye harita olayını tetikler.</p>
+          <p class="hint">Gönderen, yukarıdaki kullanıcı adıdır. Küçük hediye hız, orta hediye kalkan verir.</p>
         </section>
 
         <section class="card">
           <h2>Hediye eşlemeleri</h2>
           <div class="table-scroll">
             <table>
-              <thead>
-                <tr><th>Hediye adı</th><th>Etki</th><th class="num"></th></tr>
-              </thead>
+              <thead><tr><th>Hediye adı</th><th>Etki</th><th class="num"></th></tr></thead>
               <tbody id="gift-rows"></tbody>
             </table>
           </div>
@@ -214,30 +198,15 @@
             </select>
             <button id="gift-save" class="primary">Kaydet</button>
           </div>
-          <p class="hint">Yalnızca eşlemesi olan hediyeler oyuna etki eder. Eşleme adları büyük/küçük harf duyarsızdır.</p>
-        </section>
-
-        <section class="card">
-          <h2>Skor tablosu</h2>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr><th>Oyuncu</th><th>Rol</th><th>Durum</th><th class="num">Puan</th></tr>
-              </thead>
-              <tbody id="players"></tbody>
-            </table>
-          </div>
         </section>
 
         <section class="card">
           <h2>Olay günlüğü</h2>
-          <div class="scroll">
-            <ol id="log"></ol>
-          </div>
+          <div class="scroll"><ol id="log"></ol></div>
         </section>
-      </aside>
+      </div>
     </main>
 
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/panel.ts"></script>
   </body>
 </html>

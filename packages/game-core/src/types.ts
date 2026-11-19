@@ -2,7 +2,8 @@ export type Direction = 'up' | 'down' | 'left' | 'right';
 export type Role = 'survivor' | 'killer';
 export type Phase = 'lobby' | 'playing' | 'ended';
 export type Winner = 'survivors' | 'killer';
-export type WinReason = 'generators-done' | 'all-caught' | 'timeout';
+export type WinReason = 'generators-done' | 'all-caught' | 'timeout' | 'host-stopped';
+export type Difficulty = 'easy' | 'normal' | 'hard';
 export type GiftTier = 'small' | 'medium' | 'big' | 'special';
 export type GiftEffect = 'speed' | 'shield' | 'boss' | 'blackout' | 'surge';
 
@@ -68,7 +69,7 @@ export type GameEvent =
   | { type: 'shield-blocked'; victim: string; by: string }
   | { type: 'gift-effect'; tier: GiftTier; effect: GiftEffect; by: string; target: string | null }
   | { type: 'gift-ignored'; tier: GiftTier; by: string }
-  | { type: 'ended'; winner: Winner; reason: WinReason };
+  | { type: 'ended'; winner: Winner | null; reason: WinReason };
 
 export interface GameWorld {
   seed: number;
@@ -88,6 +89,8 @@ export interface GameWorld {
   bossTicks: number;
   /** Karartma olayının kalan süresi (tick). */
   blackoutTicks: number;
+  /** Maç zorluğu. Yalnızca lobide değiştirilebilir. */
+  difficulty: Difficulty;
 }
 
 export interface Position {

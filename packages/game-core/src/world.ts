@@ -1,9 +1,8 @@
 import {
-  CATCH_COOLDOWN,
   CYCLE_TICKS,
   DAY_TICKS,
+  DIFFICULTY,
   GENERATOR_COUNT,
-  GENERATOR_PROGRESS_PER_TASK,
   GENERATOR_REQUIRED_PROGRESS,
   GIFT,
   MAP_HEIGHT,
@@ -27,6 +26,7 @@ import { generateMap, isWalkable, manhattan, placeGenerators } from './map';
 import { nextInt, type RngState } from './rng';
 import type {
   Command,
+  Difficulty,
   Direction,
   GameEvent,
   GameWorld,
@@ -73,6 +73,7 @@ export function createWorld(seed: number): GameWorld {
     winReason: null,
     bossTicks: 0,
     blackoutTicks: 0,
+    difficulty: 'normal',
   };
 }
 
@@ -107,6 +108,20 @@ export function addPlayer(world: GameWorld, rawName: string): AddPlayerResult {
     shieldTicks: 0,
   };
   return { ok: true, key };
+}
+
+/** Zorluğu değiştirir. Yalnızca lobide çalışır. */
+export function setDifficulty(world: GameWorld, difficulty: Difficulty): boolean {
+  if (world.phase !== 'lobby') return false;
+  world.difficulty = difficulty;
+  return true;
+}
+
+/** Yayıncı maçı durdurur. Kazanan yoktur. */
+export function stopMatch(world: GameWorld): boolean {
+  if (world.phase !== 'playing') return false;
+  finish(world, null, 'host-stopped');
+  return true;
 }
 
 /** Yalnızca lobide çalışır. Maç başladıysa oyuncu silinmez. */
@@ -341,6 +356,7 @@ function moveCooldown(world: GameWorld, p: Player): number {
     cd = MOVE_COOLDOWN_SURVIVOR;
   } else {
     cd = isNight(world.tick) ? MOVE_COOLDOWN_KILLER_NIGHT : MOVE_COOLDOWN_KILLER_DAY;
+    cd = Math.max(2, cd + DIFFICULTY[world.difficulty].killerMoveDelta);
     if (world.bossTicks > 0) cd = Math.max(GIFT.bossMoveCooldownMin, cd - 2);
   }
   if (p.speedTicks > 0) cd = Math.max(1, Math.floor(cd * GIFT.speedCooldownFactor));
@@ -351,7 +367,7 @@ function moveCooldown(world: GameWorld, p: Player): number {
 function work(world: GameWorld, p: Player): void {
   const gen = world.generators.find((g) => !g.done && manhattan(g, p) === 1);
   if (!gen) return;
-  gen.progress = Math.min(GENERATOR_REQUIRED_PROGRESS, gen.progress + GENERATOR_PROGRESS_PER_TASK);
+  gen.progress = Math.min(GENERATOR_REQUIRED_PROGRESS, gen.progress + DIFFICULTY[world.difficulty].taskProgress);
   p.score += SCORE.task;
   p.cooldown = TASK_COOLDOWN;
   world.events.push({ type: 'task-progress', generatorId: gen.id, by: p.key, progress: gen.progress });
@@ -367,7 +383,7 @@ function attack(world: GameWorld, p: Player): void {
     (v) => v.role === 'survivor' && !v.caught && v.immunity === 0 && manhattan(v, p) <= 1,
   );
   if (!victim) return;
-  const cooldown = world.bossTicks > 0 ? GIFT.bossCatchCooldown : CATCH_COOLDOWN;
+  const cooldown = world.bossTicks > 0 ? GIFT.bossCatchCooldown : DIFFICULTY[world.difficulty].catchCooldown;
   p.cooldown = cooldown;
 
   if (victim.shieldTicks > 0) {
@@ -412,7 +428,7 @@ function checkEnd(world: GameWorld): void {
   if (world.tick >= MATCH_TICKS) finish(world, 'killer', 'timeout');
 }
 
-function finish(world: GameWorld, winner: Winner, reason: WinReason): void {
+function finish(world: GameWorld, winner: Winner | null, reason: WinReason): void {
   world.phase = 'ended';
   world.winner = winner;
   world.winReason = reason;
