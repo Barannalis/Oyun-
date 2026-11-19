@@ -5,6 +5,7 @@ import {
   GENERATOR_COUNT,
   GENERATOR_PROGRESS_PER_TASK,
   GENERATOR_REQUIRED_PROGRESS,
+  GIFT,
   MAP_HEIGHT,
   MAP_WIDTH,
   MATCH_TICKS,
@@ -29,6 +30,7 @@ import type {
   Direction,
   GameEvent,
   GameWorld,
+  GiftTier,
   Intent,
   Player,
   Position,
@@ -69,6 +71,8 @@ export function createWorld(seed: number): GameWorld {
     events: [],
     winner: null,
     winReason: null,
+    bossTicks: 0,
+    blackoutTicks: 0,
   };
 }
 
@@ -99,6 +103,8 @@ export function addPlayer(world: GameWorld, rawName: string): AddPlayerResult {
     cooldown: 0,
     score: 0,
     connected: true,
+    speedTicks: 0,
+    shieldTicks: 0,
   };
   return { ok: true, key };
 }
@@ -140,7 +146,11 @@ export function step(world: GameWorld): void {
     for (const p of Object.values(world.players)) {
       if (p.cooldown > 0) p.cooldown -= 1;
       if (p.immunity > 0) p.immunity -= 1;
+      if (p.speedTicks > 0) p.speedTicks -= 1;
+      if (p.shieldTicks > 0) p.shieldTicks -= 1;
     }
+    if (world.bossTicks > 0) world.bossTicks -= 1;
+    if (world.blackoutTicks > 0) world.blackoutTicks -= 1;
   }
 
   const intents = world.queue;
@@ -172,6 +182,8 @@ export function startMatch(world: GameWorld): StartResult {
     p.rescueProgress = 0;
     p.immunity = 0;
     p.cooldown = 0;
+    p.speedTicks = 0;
+    p.shieldTicks = 0;
     const pos = pickCell(world, rng, taken, isKiller ? 10 : 4);
     p.x = pos.x;
     p.y = pos.y;
@@ -181,6 +193,8 @@ export function startMatch(world: GameWorld): StartResult {
   world.rngState = rng.s;
   world.phase = 'playing';
   world.tick = 0;
+  world.bossTicks = 0;
+  world.blackoutTicks = 0;
   return { ok: true };
 }
 
@@ -188,10 +202,15 @@ export function isNight(tick: number): boolean {
   return tick % CYCLE_TICKS >= DAY_TICKS;
 }
 
+/** Karanlık: gece veya karartma olayı. Görüş alanı ve sis buna göre belirlenir. */
+export function isDark(world: GameWorld): boolean {
+  return isNight(world.tick) || world.blackoutTicks > 0;
+}
+
 export function visionRadius(world: GameWorld, p: Player): number {
-  const night = isNight(world.tick);
-  if (p.role === 'killer') return night ? VISION.killerNight : VISION.killerDay;
-  return night ? VISION.survivorNight : VISION.survivorDay;
+  const dark = isDark(world);
+  if (p.role === 'killer') return dark ? VISION.killerNight : VISION.killerDay;
+  return dark ? VISION.survivorNight : VISION.survivorDay;
 }
 
 /** Aktif oyuncuların görüş alanındaki kareler (indeks = y * width + x). */
@@ -221,6 +240,11 @@ function apply(world: GameWorld, intent: Intent): void {
   }
   if (world.phase !== 'playing') return;
 
+  if (command.type === 'gift') {
+    applyGift(world, intent.userKey, command.tier);
+    return;
+  }
+
   const player = world.players[intent.userKey];
   if (!player || player.caught || player.cooldown > 0) return;
 
@@ -244,6 +268,63 @@ function joinLobby(world: GameWorld, name: string): void {
   if (result.ok) world.events.push({ type: 'joined', key: result.key });
 }
 
+/**
+ * Hediye etkisi. Hediyeyi gönderen oyuncu değilse, kişisel etkiler yok sayılır
+ * ve gift-ignored olayı üretilir. Büyük ve özel etkiler herkes için geçerlidir.
+ */
+function applyGift(world: GameWorld, key: string, tier: GiftTier): void {
+  const p = world.players[key];
+  const ignored = (): void => {
+    world.events.push({ type: 'gift-ignored', tier, by: key });
+  };
+
+  switch (tier) {
+    case 'small': {
+      if (!p || p.caught) return ignored();
+      p.speedTicks = GIFT.speedTicks;
+      world.events.push({ type: 'gift-effect', tier, effect: 'speed', by: key, target: key });
+      return;
+    }
+    case 'medium': {
+      if (!p || p.caught || p.role !== 'survivor') return ignored();
+      p.shieldTicks = GIFT.shieldTicks;
+      world.events.push({ type: 'gift-effect', tier, effect: 'shield', by: key, target: key });
+      return;
+    }
+    case 'big': {
+      world.bossTicks = GIFT.bossTicks;
+      const killer = Object.values(world.players).find((v) => v.role === 'killer');
+      world.events.push({ type: 'gift-effect', tier, effect: 'boss', by: key, target: killer?.key ?? null });
+      return;
+    }
+    case 'special': {
+      const rng: RngState = { s: world.rngState };
+      const blackout = nextInt(rng, 2) === 0;
+      world.rngState = rng.s;
+      if (blackout) {
+        world.blackoutTicks = GIFT.blackoutTicks;
+        world.events.push({ type: 'gift-effect', tier, effect: 'blackout', by: key, target: null });
+      } else {
+        surge(world, key);
+        world.events.push({ type: 'gift-effect', tier, effect: 'surge', by: key, target: null });
+      }
+      return;
+    }
+  }
+}
+
+/** Tüm tamamlanmamış jeneratörlere ilerleme ekler. */
+function surge(world: GameWorld, by: string): void {
+  for (const gen of world.generators) {
+    if (gen.done) continue;
+    gen.progress = Math.min(GENERATOR_REQUIRED_PROGRESS, gen.progress + GIFT.surgeProgress);
+    if (gen.progress >= GENERATOR_REQUIRED_PROGRESS) {
+      gen.done = true;
+      world.events.push({ type: 'generator-done', generatorId: gen.id, by });
+    }
+  }
+}
+
 function move(world: GameWorld, p: Player, dir: Direction): void {
   const { dx, dy } = DELTAS[dir];
   const nx = p.x + dx;
@@ -255,8 +336,15 @@ function move(world: GameWorld, p: Player, dir: Direction): void {
 }
 
 function moveCooldown(world: GameWorld, p: Player): number {
-  if (p.role === 'survivor') return MOVE_COOLDOWN_SURVIVOR;
-  return isNight(world.tick) ? MOVE_COOLDOWN_KILLER_NIGHT : MOVE_COOLDOWN_KILLER_DAY;
+  let cd: number;
+  if (p.role === 'survivor') {
+    cd = MOVE_COOLDOWN_SURVIVOR;
+  } else {
+    cd = isNight(world.tick) ? MOVE_COOLDOWN_KILLER_NIGHT : MOVE_COOLDOWN_KILLER_DAY;
+    if (world.bossTicks > 0) cd = Math.max(GIFT.bossMoveCooldownMin, cd - 2);
+  }
+  if (p.speedTicks > 0) cd = Math.max(1, Math.floor(cd * GIFT.speedCooldownFactor));
+  return cd;
 }
 
 /** Hayatta kalan, komşu jeneratörde çalışır. */
@@ -273,16 +361,24 @@ function work(world: GameWorld, p: Player): void {
   }
 }
 
-/** Katil, komşu korunmayan bir hayatta kalanı yakalar. */
+/** Katil, komşu korunmayan bir hayatta kalanı yakalar. Kalkan varsa yakalama engellenir. */
 function attack(world: GameWorld, p: Player): void {
   const victim = Object.values(world.players).find(
     (v) => v.role === 'survivor' && !v.caught && v.immunity === 0 && manhattan(v, p) <= 1,
   );
   if (!victim) return;
+  const cooldown = world.bossTicks > 0 ? GIFT.bossCatchCooldown : CATCH_COOLDOWN;
+  p.cooldown = cooldown;
+
+  if (victim.shieldTicks > 0) {
+    victim.shieldTicks = 0;
+    world.events.push({ type: 'shield-blocked', victim: victim.key, by: p.key });
+    return;
+  }
+
   victim.caught = true;
   victim.rescueProgress = 0;
   p.score += SCORE.catch;
-  p.cooldown = CATCH_COOLDOWN;
   world.events.push({ type: 'caught', victim: victim.key, by: p.key });
 }
 

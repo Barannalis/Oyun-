@@ -5,6 +5,7 @@ import { Server, type Socket } from 'socket.io';
 import { MAX_CHAT_LENGTH, type AckResult, type HelloRequest, type HelloResult } from '@ttl/game-core';
 import { GameRoom } from './room';
 import { TikTokChatSource, type ChatConnection } from './sources/tiktokSource';
+import { GiftStore, isTier } from './giftStore';
 
 export interface TikTokOptions {
   uniqueId: string;
@@ -22,6 +23,8 @@ export interface AppOptions {
   reconnectGraceMs?: number;
   /** Verilmezse TikTok adaptörü hiç başlatılmaz. */
   tiktok?: TikTokOptions;
+  /** Hediye eşlemeleri veritabanı. Verilmezse geçici bellek kullanılır. */
+  giftDbPath?: string;
 }
 
 export interface App {
@@ -77,9 +80,10 @@ export async function createApp(opts: AppOptions): Promise<App> {
     maxHttpBufferSize: 16 * 1024,
   });
 
+  const gifts = new GiftStore(opts.giftDbPath ?? ':memory:');
   const room = new GameRoom(
     { emit: (event, payload) => io.emit(event, payload) },
-    { seed: opts.seed ?? randomSeed(), reconnectGraceMs: opts.reconnectGraceMs },
+    { seed: opts.seed ?? randomSeed(), reconnectGraceMs: opts.reconnectGraceMs, gifts },
   );
 
   const isHost = (req: unknown): boolean =>
@@ -123,6 +127,36 @@ export async function createApp(opts: AppOptions): Promise<App> {
       reply(ack, room.submitChat(user, text));
     });
 
+    socket.on('host:gifts', (req: unknown, ack?: unknown) => {
+      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      reply(ack, { ok: true, gifts: room.listGifts() });
+    });
+
+    socket.on('host:gift:set', (req: unknown, ack?: unknown) => {
+      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (typeof req.name !== 'string' || !isTier(req.tier)) {
+        return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
+      }
+      const saved = room.setGift(req.name, req.tier);
+      reply(ack, saved ? { ok: true } : ({ ok: false, reason: 'invalid_request' } satisfies AckResult));
+    });
+
+    socket.on('host:gift:delete', (req: unknown, ack?: unknown) => {
+      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (typeof req.name !== 'string') return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
+      room.removeGift(req.name);
+      reply(ack, { ok: true });
+    });
+
+    /** Yayıncı panelindeki simülatör hediyesi. TikTok hediyeleriyle aynı girişten geçer. */
+    socket.on('host:gift', (req: unknown, ack?: unknown) => {
+      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (typeof req.user !== 'string' || typeof req.giftName !== 'string' || req.user.trim().length === 0) {
+        return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
+      }
+      reply(ack, room.submitGift(req.user, req.giftName));
+    });
+
     socket.on('disconnect', () => room.onSocketDisconnect(socket.id));
   });
 
@@ -140,6 +174,9 @@ export async function createApp(opts: AppOptions): Promise<App> {
     source.subscribe((m) => {
       room.submitChat(m.user, m.text);
     });
+    source.subscribeGift((g) => {
+      room.submitGift(g.user, g.giftName);
+    });
   }
 
   room.start();
@@ -156,6 +193,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       source?.stop();
       room.stop();
       await io.close();
+      gifts.close();
     },
   };
 }

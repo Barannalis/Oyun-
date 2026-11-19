@@ -19,3 +19,10 @@ export interface ChatSource {
   /** Dönen fonksiyon aboneliği iptal eder. */
   subscribe(handler: (message: ChatMessage) => void): () => void;
 }
+
+/** Tamamlanmış bir hediye gönderimi (seri bittiğinde). */
+export interface GiftMessage {
+  user: string;
+  giftName: string;
+  receivedAt: number;
+}

@@ -2,16 +2,28 @@
  * Sunucu ↔ istemci sözleşmesi. Sunucu ve tüm istemciler bu tipleri kullanır.
  *
  * Sunucudan istemciye:
- *   init    → harita + ilk durum (her bağlantıda ve sıfırlamada)
- *   state   → oyuncular, jeneratörler, faz (yaklaşık 10 Hz)
- *   events  → oyun olayları (katılım, görev, yakalama, kurtarma, bitiş)
+ *   init    → harita, ilk durum ve kaynak durumu (her bağlantıda ve sıfırlamada)
+ *   state   → oyuncular, jeneratörler, faz, efektler (yaklaşık 10 Hz)
+ *   events  → oyun olayları (katılım, görev, yakalama, kurtarma, hediye, bitiş)
+ *   source  → yorum kaynağı durumu (TikTok bağlantısı)
+ *   gifts   → hediye eşlemeleri (yalnızca yayıncı paneline)
  *
  * İstemciden sunucuya (ack ile yanıtlanır):
  *   hello      → kullanıcı adıyla katılım veya token ile yeniden bağlanma
  *   command    → oyuncunun kendi soketinden komut
- *   host:start, host:reset, host:chat → yayıncı paneli (host token gerekir)
+ *   host:*     → yayıncı paneli (host token gerekir)
  */
-import type { GameEvent, GameWorld, Generator, MapData, Phase, Player, WinReason, Winner } from './types';
+import type {
+  GameEvent,
+  GameWorld,
+  Generator,
+  GiftTier,
+  MapData,
+  Phase,
+  Player,
+  WinReason,
+  Winner,
+} from './types';
 
 export type ErrorReason =
   | 'invalid_request'
@@ -26,7 +38,17 @@ export type ErrorReason =
   | 'rate_limited'
   | 'queue_full'
   | 'unknown_command'
+  | 'unknown_gift'
   | 'not_joined';
+
+export type SourceStatus = 'disabled' | 'idle' | 'connecting' | 'connected' | 'offline' | 'error';
+
+/** Yorum kaynağının (ör. TikTok adaptörü) durumu. Yayıncı paneline gösterilir. */
+export interface SourceInfo {
+  name: string;
+  status: SourceStatus;
+  detail?: string;
+}
 
 export interface PublicState {
   seed: number;
@@ -36,15 +58,8 @@ export interface PublicState {
   generators: Generator[];
   winner: Winner | null;
   winReason: WinReason | null;
-}
-
-export type SourceStatus = 'disabled' | 'idle' | 'connecting' | 'connected' | 'offline' | 'error';
-
-/** Yorum kaynağının (ör. TikTok adaptörü) durumu. Yayıncı paneline gösterilir. */
-export interface SourceInfo {
-  name: string;
-  status: SourceStatus;
-  detail?: string;
+  bossTicks: number;
+  blackoutTicks: number;
 }
 
 export interface InitMessage {
@@ -61,6 +76,22 @@ export interface StateMessage {
 export interface EventsMessage {
   events: GameEvent[];
 }
+
+export interface GiftEntry {
+  name: string;
+  tier: GiftTier;
+}
+
+export interface GiftsMessage {
+  gifts: GiftEntry[];
+}
+
+export const GIFT_TIER_LABELS: Record<GiftTier, string> = {
+  small: 'Küçük · hız bonusu',
+  medium: 'Orta · kalkan',
+  big: 'Büyük · canavarı güçlendir',
+  special: 'Özel · harita olayı',
+};
 
 export interface HelloRequest {
   name: string;
@@ -82,6 +113,16 @@ export interface HostChatRequest extends HostRequest {
   text: string;
 }
 
+export interface HostGiftRequest extends HostRequest {
+  user: string;
+  giftName: string;
+}
+
+export interface HostGiftSetRequest extends HostRequest {
+  name: string;
+  tier: GiftTier;
+}
+
 export interface CommandRequest {
   text: string;
 }
@@ -95,6 +136,8 @@ export function toPublicState(world: GameWorld): PublicState {
     generators: world.generators.map((g) => ({ ...g })),
     winner: world.winner,
     winReason: world.winReason,
+    bossTicks: world.bossTicks,
+    blackoutTicks: world.blackoutTicks,
   };
 }
 
@@ -112,6 +155,8 @@ export function worldFromInit(init: InitMessage): GameWorld {
     events: [],
     winner: init.state.winner,
     winReason: init.state.winReason,
+    bossTicks: init.state.bossTicks,
+    blackoutTicks: init.state.blackoutTicks,
   };
 }
 
@@ -123,4 +168,6 @@ export function applyPublicState(world: GameWorld, state: PublicState): void {
   world.generators = state.generators;
   world.winner = state.winner;
   world.winReason = state.winReason;
+  world.bossTicks = state.bossTicks;
+  world.blackoutTicks = state.blackoutTicks;
 }

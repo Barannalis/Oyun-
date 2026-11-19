@@ -4,6 +4,8 @@ import {
   worldFromInit,
   type AckResult,
   type EventsMessage,
+  type GiftEntry,
+  type GiftTier,
   type InitMessage,
   type SourceInfo,
   type StateMessage,
@@ -28,6 +30,7 @@ export class RoomClient {
     this.socket.on('connect', () => {
       session.connected = true;
       pushLog(session.log, '» Sunucuya bağlandı');
+      this.refreshGifts();
     });
     this.socket.on('disconnect', () => {
       session.connected = false;
@@ -64,6 +67,32 @@ export class RoomClient {
   hostChat(user: string, text: string): void {
     this.socket.emit('host:chat', { token: this.hostToken, user, text }, (r: AckResult) => {
       if (!r.ok) pushLog(this.session.log, `» ${user}: ${errorText(r.reason)}`);
+    });
+  }
+
+  refreshGifts(): void {
+    this.socket.emit('host:gifts', { token: this.hostToken }, (r: { ok: boolean; gifts?: GiftEntry[] }) => {
+      if (r.ok && r.gifts) this.session.gifts = r.gifts;
+    });
+  }
+
+  setGift(name: string, tier: GiftTier): void {
+    this.socket.emit('host:gift:set', { token: this.hostToken, name, tier }, (r: AckResult) => {
+      this.report(r, `Eşleme kaydedildi: ${name}`);
+      this.refreshGifts();
+    });
+  }
+
+  deleteGift(name: string): void {
+    this.socket.emit('host:gift:delete', { token: this.hostToken, name }, (r: AckResult) => {
+      this.report(r, `Eşleme silindi: ${name}`);
+      this.refreshGifts();
+    });
+  }
+
+  sendGift(user: string, giftName: string): void {
+    this.socket.emit('host:gift', { token: this.hostToken, user, giftName }, (r: AckResult) => {
+      if (!r.ok) pushLog(this.session.log, `» ${user} hediyesi: ${errorText(r.reason)}`);
     });
   }
 

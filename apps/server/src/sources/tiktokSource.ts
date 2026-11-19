@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatSource, SourceInfo, SourceStatus } from '@ttl/game-core';
+import type { ChatMessage, ChatSource, GiftMessage, SourceInfo, SourceStatus } from '@ttl/game-core';
 
 /**
  * Adaptörün ihtiyaç duyduğu minimum bağlantı arayüzü. tiktok-live-connector'ın
@@ -9,10 +9,18 @@ export interface ChatPayload {
   user?: { uniqueId?: string; nickname?: string };
 }
 
+export interface GiftPayload {
+  user?: { uniqueId?: string; nickname?: string };
+  giftDetails?: { giftName?: string };
+  /** Seri hediyelerde son paket 1 (veya true) olur. Yalnızca o paket sayılır. */
+  repeatEnd?: number | boolean;
+}
+
 export interface ChatConnection {
   connect(): Promise<unknown>;
   disconnect(): Promise<unknown>;
   on(event: 'chat', handler: (data: ChatPayload) => void): void;
+  on(event: 'gift', handler: (data: GiftPayload) => void): void;
   on(event: 'connected' | 'disconnected', handler: () => void): void;
   on(event: 'error', handler: (err: unknown) => void): void;
 }
@@ -37,6 +45,7 @@ const SOURCE_NAME = 'tiktok';
 export class TikTokChatSource implements ChatSource {
   readonly name = SOURCE_NAME;
   private readonly handlers = new Set<(message: ChatMessage) => void>();
+  private readonly giftHandlers = new Set<(message: GiftMessage) => void>();
   private conn: ChatConnection | null = null;
   private running = false;
   private attempts = 0;
@@ -70,6 +79,13 @@ export class TikTokChatSource implements ChatSource {
     };
   }
 
+  subscribeGift(handler: (message: GiftMessage) => void): () => void {
+    this.giftHandlers.add(handler);
+    return () => {
+      this.giftHandlers.delete(handler);
+    };
+  }
+
   private connect(): void {
     const c = this.opts.createConnection(this.opts.uniqueId);
     this.conn = c;
@@ -82,6 +98,15 @@ export class TikTokChatSource implements ChatSource {
       if (user.length === 0 || text.length === 0) return;
       const message: ChatMessage = { user, text, receivedAt: Date.now() };
       for (const h of this.handlers) h(message);
+    });
+    c.on('gift', (data) => {
+      if (this.conn !== c) return;
+      if (!data.repeatEnd) return;
+      const user = data.user?.uniqueId || data.user?.nickname || '';
+      const giftName = data.giftDetails?.giftName?.trim() ?? '';
+      if (user.length === 0 || giftName.length === 0) return;
+      const message: GiftMessage = { user, giftName, receivedAt: Date.now() };
+      for (const h of this.giftHandlers) h(message);
     });
     c.on('connected', () => {
       if (this.conn !== c) return;

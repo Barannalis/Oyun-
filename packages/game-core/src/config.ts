@@ -63,3 +63,19 @@ export const SCORE = {
   catch: 5,
   rescue: 3,
 } as const;
+
+// ---- Hediye sistemi (Aşama 5) ---------------------------------------------
+export const GIFT = {
+  /** Küçük: hız bonusu süresi ve hareket beklemesi çarpanı */
+  speedTicks: 8 * TICK_RATE,
+  speedCooldownFactor: 0.5,
+  /** Orta: kalkan süresi (bir yakalamayı engeller) */
+  shieldTicks: 20 * TICK_RATE,
+  /** Büyük: canavarı güçlendirme süresi */
+  bossTicks: 15 * TICK_RATE,
+  bossCatchCooldown: 5,
+  bossMoveCooldownMin: 2,
+  /** Özel: karartma süresi ve jeneratör sıçraması miktarı */
+  blackoutTicks: 10 * TICK_RATE,
+  surgeProgress: 20,
+} as const;

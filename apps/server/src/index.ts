@@ -25,5 +25,6 @@ if (process.env.TIKTOK_ENABLED === '1') {
   );
 }
 
-const app = await createApp({ port, host, hostToken, corsOrigins, tiktok });
+const giftDbPath = process.env.GIFT_DB ?? './data/gifts.db';
+const app = await createApp({ port, host, hostToken, corsOrigins, tiktok, giftDbPath });
 console.log(`Oyun sunucusu hazır: ${app.url()} · TikTok: ${tiktok ? 'açık' : 'kapalı'}`);

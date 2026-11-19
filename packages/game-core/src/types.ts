@@ -3,13 +3,16 @@ export type Role = 'survivor' | 'killer';
 export type Phase = 'lobby' | 'playing' | 'ended';
 export type Winner = 'survivors' | 'killer';
 export type WinReason = 'generators-done' | 'all-caught' | 'timeout';
+export type GiftTier = 'small' | 'medium' | 'big' | 'special';
+export type GiftEffect = 'speed' | 'shield' | 'boss' | 'blackout' | 'surge';
 
 /** Yorumdan çözümlenmiş oyun komutu. Metin burada yoktur. */
 export type Command =
   | { type: 'join' }
   | { type: 'move'; dir: Direction }
   | { type: 'task' }
-  | { type: 'rescue' };
+  | { type: 'rescue' }
+  | { type: 'gift'; tier: GiftTier; giftName: string };
 
 /** Sıraya alınmış, henüz uygulanmamış bir oyuncu komutu. */
 export interface Intent {
@@ -35,6 +38,10 @@ export interface Player {
   score: number;
   /** Oyuncunun bağlantısı açık mı. Yalnızca soket üzerinden katılanlar için anlamlıdır. */
   connected: boolean;
+  /** Hız bonusu kalan süre (tick). */
+  speedTicks: number;
+  /** Kalkan kalan süre (tick). Bir yakalamayı engeller ve tüketilir. */
+  shieldTicks: number;
 }
 
 export interface Generator {
@@ -58,6 +65,9 @@ export type GameEvent =
   | { type: 'generator-done'; generatorId: number; by: string }
   | { type: 'caught'; victim: string; by: string }
   | { type: 'rescued'; victim: string; by: string }
+  | { type: 'shield-blocked'; victim: string; by: string }
+  | { type: 'gift-effect'; tier: GiftTier; effect: GiftEffect; by: string; target: string | null }
+  | { type: 'gift-ignored'; tier: GiftTier; by: string }
   | { type: 'ended'; winner: Winner; reason: WinReason };
 
 export interface GameWorld {
@@ -74,6 +84,10 @@ export interface GameWorld {
   events: GameEvent[];
   winner: Winner | null;
   winReason: WinReason | null;
+  /** Büyük hediyeyle güçlenmiş katilin kalan süresi (tick). */
+  bossTicks: number;
+  /** Karartma olayının kalan süresi (tick). */
+  blackoutTicks: number;
 }
 
 export interface Position {

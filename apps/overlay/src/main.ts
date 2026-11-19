@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { parseCommand, type GameWorld } from '@ttl/game-core';
+import { GIFT_TIER_LABELS, parseCommand, type GameWorld, type GiftTier } from '@ttl/game-core';
 import { REASON_LABEL, pushLog } from './format';
 import { CANVAS_H, CANVAS_W, GameScene } from './scenes/GameScene';
 import { createSession } from './session';
@@ -72,6 +72,63 @@ $('reset').addEventListener('click', () => {
   room.hostReset();
 });
 
+// ---- Hediyeler -----------------------------------------------------------
+
+$('gift-send-btn').addEventListener('click', () => {
+  const name = $<HTMLSelectElement>('gift-send').value;
+  if (!name) return;
+  const user = currentUser();
+  pushLog(session.log, `${user} hediye gönderdi: ${name}`);
+  room.sendGift(user, name);
+});
+
+$('gift-save').addEventListener('click', () => {
+  const name = $<HTMLInputElement>('gift-name').value.trim();
+  if (!name) {
+    pushLog(session.log, '» Hediye adı boş olamaz');
+    return;
+  }
+  room.setGift(name, $<HTMLSelectElement>('gift-tier').value as GiftTier);
+  $<HTMLInputElement>('gift-name').value = '';
+});
+
+$('gift-rows').addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  const del = target.closest<HTMLButtonElement>('button[data-del]');
+  if (del?.dataset.del) {
+    room.deleteGift(del.dataset.del);
+    return;
+  }
+  const edit = target.closest<HTMLButtonElement>('button[data-edit]');
+  if (edit?.dataset.edit) {
+    $<HTMLInputElement>('gift-name').value = edit.dataset.edit;
+    $<HTMLSelectElement>('gift-tier').value = edit.dataset.tier ?? 'small';
+  }
+});
+
+let lastGiftSignature = '';
+function renderGifts(): void {
+  const signature = JSON.stringify(session.gifts);
+  if (signature === lastGiftSignature) return;
+  lastGiftSignature = signature;
+
+  $('gift-rows').innerHTML =
+    session.gifts
+      .map(
+        (g) =>
+          `<tr><td>${escapeHtml(g.name)}</td><td>${GIFT_TIER_LABELS[g.tier]}</td><td class="num"><button data-edit="${escapeHtml(g.name)}" data-tier="${g.tier}">Düzenle</button> <button class="danger" data-del="${escapeHtml(g.name)}">Sil</button></td></tr>`,
+      )
+      .join('') || '<tr><td colspan="3" class="muted">Eşleme yok</td></tr>';
+
+  const select = $<HTMLSelectElement>('gift-send');
+  const current = select.value;
+  select.innerHTML =
+    session.gifts
+      .map((g) => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)} (${GIFT_TIER_LABELS[g.tier]})</option>`)
+      .join('') || '<option value="">Eşleme yok</option>';
+  if (session.gifts.some((g) => g.name === current)) select.value = current;
+}
+
 function renderPanel(world: GameWorld | null): void {
   if (!world) {
     $('stat-phase').textContent = session.connected ? 'Bekleniyor' : 'Bağlanıyor';
@@ -82,6 +139,7 @@ function renderPanel(world: GameWorld | null): void {
   $('conn').textContent = session.connected ? 'Sunucu bağlı' : 'Sunucu bağlantısı yok';
   $('src').textContent = sourceLabel(session.source);
   $('conn').className = session.connected ? 'ok' : 'bad';
+  renderGifts();
 
   const logEl = $('log');
   if (logEl.dataset.count !== String(session.log.length)) {

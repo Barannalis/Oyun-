@@ -20,11 +20,14 @@ import {
   type GameEvent,
   type GameWorld,
   type HelloResult,
+  type GiftEntry,
+  type GiftTier,
   type InitMessage,
   type SourceInfo,
   type StateMessage,
 } from '@ttl/game-core';
 import { KeyedRateLimiter } from './rateLimit';
+import type { GiftStore } from './giftStore';
 
 /** Odanın dışarıya yayın yaptığı tek kanal. Gerçek uygulamada Socket.IO sunucusu. */
 export interface Outbound {
@@ -34,6 +37,7 @@ export interface Outbound {
 export interface RoomOptions {
   seed: number;
   reconnectGraceMs?: number;
+  gifts: GiftStore;
 }
 
 /**
@@ -52,6 +56,7 @@ export class GameRoom {
   private outbox: GameEvent[] = [];
   private readonly graceMs: number;
   private sourceInfo: SourceInfo = { name: 'tiktok', status: 'disabled' };
+  private readonly gifts: GiftStore;
 
   constructor(
     private readonly out: Outbound,
@@ -59,6 +64,7 @@ export class GameRoom {
   ) {
     this.current = createWorld(opts.seed);
     this.graceMs = opts.reconnectGraceMs ?? RECONNECT_GRACE_MS;
+    this.gifts = opts.gifts;
   }
 
   get world(): GameWorld {
@@ -164,6 +170,29 @@ export class GameRoom {
     const command = parseCommand(text);
     if (!command) return { ok: false, reason: 'unknown_command' };
     return enqueue(this.current, user, command) ? { ok: true } : { ok: false, reason: 'queue_full' };
+  }
+
+  /**
+   * Hediye girişi. Hediye adı eşlemeden kademeye çevrilir. Eşlemesi olmayan hediye
+   * reddedilir. Hediye hız sınırına tabi değildir, çünkü her hediye bir ödemedir.
+   */
+  submitGift(user: string, giftName: string): AckResult {
+    const tier = this.gifts.resolve(giftName);
+    if (!tier) return { ok: false, reason: 'unknown_gift' };
+    const queued = enqueue(this.current, user, { type: 'gift', tier, giftName: giftName.trim() });
+    return queued ? { ok: true } : { ok: false, reason: 'queue_full' };
+  }
+
+  listGifts(): GiftEntry[] {
+    return this.gifts.list();
+  }
+
+  setGift(name: string, tier: GiftTier): boolean {
+    return this.gifts.set(name, tier);
+  }
+
+  removeGift(name: string): boolean {
+    return this.gifts.remove(name);
   }
 
   startMatch(): AckResult {

@@ -50,6 +50,8 @@ const EMPTY_STATE = {
   generators: [],
   winner: null,
   winReason: null,
+  bossTicks: 0,
+  blackoutTicks: 0,
 } as StateMessage['state'];
 
 /** Henüz durum gelmediyse boş lobi döner, böylece waitFor tekrar dener. */

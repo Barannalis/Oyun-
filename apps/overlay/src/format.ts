@@ -1,6 +1,21 @@
-import { type ErrorReason, type GameEvent, type GameWorld, type WinReason } from '@ttl/game-core';
+import {
+  GIFT_TIER_LABELS,
+  type ErrorReason,
+  type GameEvent,
+  type GameWorld,
+  type GiftEffect,
+  type WinReason,
+} from '@ttl/game-core';
 
 export const LOG_LIMIT = 60;
+
+export const GIFT_EFFECT_TEXT: Record<GiftEffect, string> = {
+  speed: 'hız bonusu aldı',
+  shield: 'kalkan aldı',
+  boss: 'canavarı güçlendirdi',
+  blackout: 'karartma olayı başlattı',
+  surge: 'jeneratörlere sıçrama gönderdi',
+};
 
 export const REASON_LABEL: Record<WinReason, string> = {
   'generators-done': 'Tüm jeneratörler çalıştırıldı',
@@ -21,6 +36,7 @@ const ERROR_TEXT: Record<ErrorReason, string> = {
   rate_limited: 'Çok hızlı yorum, biraz bekleyin',
   queue_full: 'Sunucu yoğun, komut atılamadı',
   unknown_command: 'Tanınmayan komut',
+  unknown_gift: 'Bu hediye için eşleme yok (panelden ekleyin)',
   not_joined: 'Önce oyuna katılın (GİR)',
 };
 
@@ -46,6 +62,12 @@ export function describeEvent(world: GameWorld, e: GameEvent): string {
       return `${name(e.by)}, ${name(e.victim)} oyuncusunu yakaladı`;
     case 'rescued':
       return `${name(e.by)}, ${name(e.victim)} oyuncusunu kurtardı`;
+    case 'shield-blocked':
+      return `${name(e.victim)} kalkanıyla ${name(e.by)} yakalamasını engelledi`;
+    case 'gift-effect':
+      return `${name(e.by)} ${GIFT_EFFECT_TEXT[e.effect]}${e.target && e.target !== e.by ? ` (${name(e.target)})` : ''}`;
+    case 'gift-ignored':
+      return `${name(e.by)} hediyesi (${GIFT_TIER_LABELS[e.tier]}) bu oyunda etki yaratmadı`;
     case 'ended':
       return `Oyun bitti: ${e.winner === 'survivors' ? 'Hayatta kalanlar' : 'Katil'} kazandı (${REASON_LABEL[e.reason]})`;
   }

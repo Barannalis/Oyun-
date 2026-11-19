@@ -240,3 +240,23 @@ describe('uygulama ile entegrasyon', () => {
     expect(made[made.length - 1].disconnects).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('TikTok hediye olayları', () => {
+  it('yalnızca seri bittiğinde (repeatEnd) hediye yayılır', async () => {
+    const { createConnection, made } = factory([succeed]);
+    const gifts: Array<{ user: string; giftName: string }> = [];
+    source = new TikTokChatSource({ uniqueId: 'yayinci', createConnection, onStatus: () => undefined });
+    source.subscribeGift((g) => gifts.push({ user: g.user, giftName: g.giftName }));
+    source.start();
+    await waitFor(() => made.length === 1);
+
+    const c = made[0];
+    c.emit('connected');
+    c.emit('gift', { user: { uniqueId: 'izleyici' }, giftDetails: { giftName: 'Gül' }, repeatEnd: 0 });
+    c.emit('gift', { user: { uniqueId: 'izleyici' }, giftDetails: { giftName: 'Gül' }, repeatEnd: 1 });
+    c.emit('gift', { user: {}, giftDetails: { giftName: 'Gül' }, repeatEnd: true });
+    c.emit('gift', { user: { uniqueId: 'x' }, giftDetails: {}, repeatEnd: true });
+
+    expect(gifts).toEqual([{ user: 'izleyici', giftName: 'Gül' }]);
+  });
+});

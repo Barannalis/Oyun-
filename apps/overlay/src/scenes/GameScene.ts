@@ -7,6 +7,7 @@ import {
   MAX_PLAYERS,
   TICK_RATE,
   TILE_WALL,
+  isDark,
   isNight,
   litTiles,
   type GameWorld,
@@ -35,6 +36,22 @@ const COLOR = {
   protect: 0x9be7a5,
 } as const;
 
+const POPUP_TEXT: Record<'speed' | 'shield' | 'boss' | 'blackout' | 'surge', string> = {
+  speed: 'HIZ BONUSU',
+  shield: 'KALKAN',
+  boss: 'CANAVAR GÜÇLENDİ',
+  blackout: 'KARARTMA',
+  surge: 'JENERATÖR SIÇRAMASI',
+};
+
+const POPUP_COLOR: Record<'speed' | 'shield' | 'boss' | 'blackout' | 'surge', string> = {
+  speed: '#7fd8ff',
+  shield: '#9be7a5',
+  boss: '#ff8a8a',
+  blackout: '#c9b6ff',
+  surge: '#ffd66b',
+};
+
 interface Flash {
   x: number;
   y: number;
@@ -57,6 +74,7 @@ export class GameScene extends Phaser.Scene {
   private banner!: Phaser.GameObjects.Text;
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private flashes: Flash[] = [];
+  private popups: Array<{ text: Phaser.GameObjects.Text; life: number; max: number }> = [];
 
   constructor(private readonly session: Session) {
     super('game');
@@ -98,10 +116,38 @@ export class GameScene extends Phaser.Scene {
       pushLog(this.session.log, describeEvent(world, e));
       if (e.type === 'caught') this.flashAt(world.players[e.victim], COLOR.killer);
       if (e.type === 'rescued') this.flashAt(world.players[e.victim], COLOR.protect);
+      if (e.type === 'gift-effect') {
+        const target = e.target ? world.players[e.target] : undefined;
+        const x = target && target.x >= 0 ? target.x * TILE + TILE / 2 : CANVAS_W / 2;
+        const y = target && target.y >= 0 ? HUD_H + target.y * TILE - 10 : CANVAS_H / 2;
+        this.popup(POPUP_TEXT[e.effect], x, y, POPUP_COLOR[e.effect]);
+      }
       if (e.type === 'generator-done') {
         const g = world.generators[e.generatorId];
         if (g) this.flashAt({ x: g.x, y: g.y }, COLOR.generatorDone);
       }
+    }
+  }
+
+  private popup(label: string, x: number, y: number, color: string): void {
+    const text = this.add
+      .text(x, y, label, { fontFamily: FONT, fontSize: '14px', color, backgroundColor: 'rgba(0,0,0,0.6)', padding: { x: 6, y: 3 } })
+      .setOrigin(0.5)
+      .setDepth(40);
+    this.popups.push({ text, life: 2200, max: 2200 });
+  }
+
+  private drawPopups(deltaMs: number): void {
+    for (let i = this.popups.length - 1; i >= 0; i--) {
+      const p = this.popups[i];
+      p.life -= deltaMs;
+      if (p.life <= 0) {
+        p.text.destroy();
+        this.popups.splice(i, 1);
+        continue;
+      }
+      p.text.y -= 0.02 * deltaMs;
+      p.text.setAlpha(Math.min(1, p.life / 400));
     }
   }
 
@@ -121,6 +167,7 @@ export class GameScene extends Phaser.Scene {
     this.drawGenerators(world);
     this.drawFog(world);
     this.drawActors(world, deltaMs);
+    this.drawPopups(deltaMs);
     this.drawHud(world);
     this.drawBanner(world);
   }
@@ -175,7 +222,7 @@ export class GameScene extends Phaser.Scene {
 
   private drawFog(world: GameWorld): void {
     const f = this.fogLayer.clear();
-    if (world.phase !== 'playing' || !isNight(world.tick)) return;
+    if (world.phase !== 'playing' || !isDark(world)) return;
     const lit = litTiles(world);
     const { width, height } = world.map;
     f.fillStyle(0x000000, 0.86);
@@ -262,8 +309,9 @@ export class GameScene extends Phaser.Scene {
     const players = Object.keys(world.players).length;
     const timer = world.phase === 'playing' ? `Kalan süre ${mm}:${ss}` : '';
     const link = this.session.connected ? '' : '   [BAĞLANTI YOK]';
+    const extra = `${world.blackoutTicks > 0 ? ' · KARARTMA' : ''}${world.bossTicks > 0 ? ' · KATİL GÜÇLÜ' : ''}`;
     this.hud.setText(
-      `${phase}   Oyuncu ${players}/${MAX_PLAYERS}   Jeneratör ${done}/${world.generators.length}   ${timer}${link}`,
+      `${phase}${extra}   Oyuncu ${players}/${MAX_PLAYERS}   Jeneratör ${done}/${world.generators.length}   ${timer}${link}`,
     );
   }
 

@@ -93,6 +93,16 @@
       }
       input#user { width: 120px; }
       input#text { flex: 1; }
+      select {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 9px 10px;
+        font-size: 14px;
+        min-width: 0;
+        max-width: 100%;
+      }
       button {
         background: var(--panel-2);
         color: var(--text);
@@ -110,7 +120,7 @@
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
       th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
       .muted { color: var(--muted); }
       #conn.ok { color: var(--ok); }
       #conn.bad { color: var(--accent); }
@@ -173,6 +183,38 @@
             <button data-cmd="merhaba">Geçersiz yorum</button>
           </div>
           <p class="hint">Komutlar seçili kullanıcı adıyla gönderilir. Geçersiz yorumlar yok sayılır.</p>
+        </section>
+
+        <section class="card">
+          <h2>Hediye gönder (simülatör)</h2>
+          <div class="row">
+            <select id="gift-send" aria-label="Hediye" style="flex:1"></select>
+            <button id="gift-send-btn">Gönder</button>
+          </div>
+          <p class="hint">Gönderen, yukarıdaki kullanıcı adıdır. Küçük hediye hız, orta hediye kalkan verir. Büyük hediye katili, özel hediye harita olayını tetikler.</p>
+        </section>
+
+        <section class="card">
+          <h2>Hediye eşlemeleri</h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Hediye adı</th><th>Etki</th><th class="num"></th></tr>
+              </thead>
+              <tbody id="gift-rows"></tbody>
+            </table>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input id="gift-name" type="text" placeholder="TikTok hediye adı" maxlength="64" aria-label="Hediye adı" />
+            <select id="gift-tier" aria-label="Etki">
+              <option value="small">Küçük · hız bonusu</option>
+              <option value="medium">Orta · kalkan</option>
+              <option value="big">Büyük · canavarı güçlendir</option>
+              <option value="special">Özel · harita olayı</option>
+            </select>
+            <button id="gift-save" class="primary">Kaydet</button>
+          </div>
+          <p class="hint">Yalnızca eşlemesi olan hediyeler oyuna etki eder. Eşleme adları büyük/küçük harf duyarsızdır.</p>
         </section>
 
         <section class="card">
