@@ -1,6 +1,9 @@
 import {
   DIFFICULTY_LABELS,
   GENERATOR_REQUIRED_PROGRESS,
+  type Direction,
+  isWalkable,
+  manhattan,
   MAP_HEIGHT,
   MAP_WIDTH,
   MATCH_TICKS,
@@ -93,6 +96,9 @@ let acc = 0;
 let last = performance.now();
 let bigTimer: number | undefined;
 let elapsed = 0;
+let botsOn = true;
+const BOT_STEP_MS = 380;
+const KILLER_STEP_MS = 300;
 
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; kind: 'star' | 'dot' | 'heart'; size: number; g: number }
 const particles: Particle[] = [];
@@ -179,7 +185,6 @@ function handleEvent(e: GameEvent): void {
       break;
     }
     case 'task-progress':
-      feed(`${nameOf(e.by)} jeneratöre çalıştı (%${e.progress})`);
       break;
     case 'generator-done': {
       const g = world.generators[e.generatorId];
@@ -767,6 +772,7 @@ function frame(now: number): void {
   acc = Math.min(acc + frameMs, TICK_MS * 5);
   last = now;
   elapsed = now / 1000;
+  botTick(frameMs);
   while (acc >= TICK_MS) {
     acc -= TICK_MS;
     step(world);
@@ -775,6 +781,103 @@ function frame(now: number): void {
   drawMap(elapsed, frameMs / 1000);
   renderHud();
   requestAnimationFrame(frame);
+}
+
+// ---- Bot yapay zekâsı (yalnızca prototip) ----------------------------------
+
+const DIRS: Array<{ dx: number; dy: number; dir: Direction }> = [
+  { dx: 0, dy: -1, dir: 'up' },
+  { dx: 0, dy: 1, dir: 'down' },
+  { dx: -1, dy: 0, dir: 'left' },
+  { dx: 1, dy: 0, dir: 'right' },
+];
+
+/** Hedef karelere giden en kısa yolun ilk adımını bulur (BFS). Yoksa null. */
+function firstStep(from: { x: number; y: number }, isGoal: (x: number, y: number) => boolean): Direction | null {
+  const { width, height } = world.map;
+  const start = from.y * width + from.x;
+  const seen = new Uint8Array(width * height);
+  const first = new Int8Array(width * height).fill(-1);
+  const queue: number[] = [start];
+  seen[start] = 1;
+  for (let qi = 0; qi < queue.length; qi++) {
+    const cur = queue[qi];
+    const cx = cur % width;
+    const cy = Math.floor(cur / width);
+    if (cur !== start && isGoal(cx, cy)) return DIRS[first[cur]].dir;
+    for (let d = 0; d < 4; d++) {
+      const nx = cx + DIRS[d].dx;
+      const ny = cy + DIRS[d].dy;
+      if (!isWalkable(world.map, nx, ny)) continue;
+      const idx = ny * width + nx;
+      if (seen[idx]) continue;
+      seen[idx] = 1;
+      first[idx] = cur === start ? d : first[cur];
+      queue.push(idx);
+    }
+  }
+  return null;
+}
+
+/** Tehlikeden uzaklaşan, yürünebilir ilk yönü seçer. */
+function fleeStep(p: { x: number; y: number }, danger: { x: number; y: number }): Direction | null {
+  let best: Direction | null = null;
+  let bestD = manhattan(p, danger);
+  for (const d of DIRS) {
+    const nx = p.x + d.dx;
+    const ny = p.y + d.dy;
+    if (!isWalkable(world.map, nx, ny)) continue;
+    const dist = manhattan({ x: nx, y: ny }, danger);
+    if (dist > bestD) {
+      bestD = dist;
+      best = d.dir;
+    }
+  }
+  return best;
+}
+
+type BotCommand = { type: 'move'; dir: Direction } | { type: 'task' } | { type: 'rescue' };
+
+function decide(bot: import('@ttl/game-core').Player): BotCommand | null {
+  const alive = Object.values(world.players).filter((q) => q.x >= 0);
+  if (bot.role === 'killer') {
+    const targets = alive.filter((q) => q.role === 'survivor' && !q.caught);
+    if (targets.length === 0) return null;
+    if (targets.some((t) => manhattan(t, bot) === 1)) return { type: 'task' };
+    const dir = firstStep(bot, (x, y) => targets.some((t) => manhattan({ x, y }, t) === 1));
+    return dir ? { type: 'move', dir } : null;
+  }
+  // Hayatta kalan
+  const killer = alive.find((q) => q.role === 'killer');
+  if (killer && manhattan(killer, bot) <= 4) {
+    const dir = fleeStep(bot, killer);
+    return dir ? { type: 'move', dir } : null;
+  }
+  const downed = alive.find((q) => q.role === 'survivor' && q.caught && manhattan(q, bot) === 1);
+  if (downed && bot.cooldown === 0) return { type: 'rescue' };
+  const gens = world.generators.filter((g) => !g.done);
+  if (gens.length === 0) return null;
+  if (gens.some((g) => manhattan(g, bot) === 1)) return { type: 'task' };
+  const dir = firstStep(bot, (x, y) => gens.some((g) => manhattan({ x, y }, g) === 1));
+  return dir ? { type: 'move', dir } : null;
+}
+
+/** Her botun kendi karar zamanlayıcısı var. Katil, oyun kuralındaki daha kısa bekleme süresine uygun olarak daha sık karar verir. */
+const botClock = new Map<string, number>();
+function botTick(dtMs: number): void {
+  if (!botsOn || world.phase !== 'playing') return;
+  for (const p of Object.values(world.players)) {
+    if (!p.key.startsWith('bot') || p.caught || p.x < 0) continue;
+    const interval = p.role === 'killer' ? KILLER_STEP_MS : BOT_STEP_MS;
+    const t = (botClock.get(p.key) ?? 0) + dtMs;
+    if (t < interval) {
+      botClock.set(p.key, t);
+      continue;
+    }
+    botClock.set(p.key, t - interval);
+    const cmd = decide(p);
+    if (cmd) enqueue(world, p.name, cmd);
+  }
 }
 
 // ---- Etkileşim -----------------------------------------------------------
@@ -794,6 +897,10 @@ document.querySelectorAll<HTMLButtonElement>('button[data-cmd]').forEach((b) =>
 
 $('gear').addEventListener('click', () => $('sheet').classList.add('open'));
 $('close').addEventListener('click', () => $('sheet').classList.remove('open'));
+$('bot-toggle').addEventListener('click', () => {
+  botsOn = !botsOn;
+  $('bot-toggle').textContent = `Botlar: ${botsOn ? 'açık' : 'kapalı'}`;
+});
 $('bots').addEventListener('click', () => {
   for (let i = 0; i < 5; i++) {
     botCounter += 1;
@@ -816,6 +923,7 @@ $('stop').addEventListener('click', () => {
 $('reset').addEventListener('click', () => {
   world = createWorld(Date.now() & 0x7fffffff);
   botCounter = 0;
+  botClock.clear();
   trail.clear();
   particles.length = 0;
   $('feed').innerHTML = '';
