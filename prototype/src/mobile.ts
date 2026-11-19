@@ -10,7 +10,6 @@ import {
   createWorld,
   enqueue,
   isDark,
-  litTiles,
   parseCommand,
   setDifficulty,
   startMatch,
