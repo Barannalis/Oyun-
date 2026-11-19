@@ -5,8 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const targets = [
+  { entry: 'src/main.ts', template: 'template.html', out: 'canavar-avi-prototip.html' },
+  { entry: 'src/mobile.ts', template: 'mobile.template.html', out: 'canavar-avi-telefon.html' },
+];
+for (const t of targets) await buildOne(t);
+
+async function buildOne({ entry, template: tplName, out: outName }) {
 const result = await build({
-  entryPoints: [join(here, 'src/main.ts')],
+  entryPoints: [join(here, entry)],
   bundle: true,
   format: 'iife',
   minify: true,
@@ -15,11 +22,12 @@ const result = await build({
   logLevel: 'warning',
 });
 const code = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
-const template = readFileSync(join(here, 'template.html'), 'utf8');
+const template = readFileSync(join(here, tplName), 'utf8');
 if (!template.includes('<script id="app"></script>')) throw new Error('şablonda uygulama yeri bulunamadı');
 const html = template.replace('<script id="app"></script>', () => `<script>${code}</script>`);
 
 mkdirSync(join(here, 'dist'), { recursive: true });
-const out = join(here, 'dist', 'canavar-avi-prototip.html');
+const out = join(here, 'dist', outName);
 writeFileSync(out, html, 'utf8');
-console.log(`Prototip hazır: ${out} (${(html.length / 1024).toFixed(0)} KB)`);
+console.log(`Hazır: ${out} (${(html.length / 1024).toFixed(0)} KB)`);
+}

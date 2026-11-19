@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CANAVAR AVI · Telefon Prototipi</title>
+<style>
+  :root {
+    --bg: #07080c; --card: #12151d; --card2: #1a1f2b; --line: #262d3c;
+    --text: #eef2f8; --muted: #8a94a8; --amber: #ffb020; --mint: #2ee6a6;
+    --rose: #ff3d6e; --sky: #36d1ff; --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  body { display: flex; justify-content: center; align-items: stretch; }
+  .phone {
+    width: 100%; max-width: 430px; height: 100vh; max-height: 100dvh; min-height: 640px;
+    background: var(--bg); display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+  .timer { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .chips { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+  .chip { font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 999px; background: var(--card2); color: var(--muted); white-space: nowrap; }
+  .chip.live { background: var(--rose); color: #fff; }
+  .chip.night { background: var(--violet); color: #fff; }
+  .chip.day { background: var(--amber); color: #111; }
+  .gear { background: var(--card2); border: 0; color: var(--text); width: 36px; height: 36px; border-radius: 12px; font-size: 18px; cursor: pointer; }
+  .ranks { display: flex; gap: 6px; padding: 0 14px 8px; overflow-x: auto; scrollbar-width: none; }
+  .rank { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 5px 9px; font-size: 12px; }
+  .rank b { color: var(--amber); }
+  .rank em { font-style: normal; color: var(--muted); font-weight: 600; }
+  .stage { position: relative; margin: 0 10px; border-radius: 18px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+  #map { display: block; width: 100%; height: auto; }
+  .banner { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; pointer-events: none; }
+  .banner .big { display: inline-block; font-size: 30px; font-weight: 900; letter-spacing: .02em; text-shadow: 0 4px 24px rgba(0,0,0,.8); padding: 6px 14px; border-radius: 14px; background: rgba(0,0,0,.55); animation: pop .35s ease-out; }
+  .banner .small { display: block; margin-top: 6px; font-size: 13px; color: #dfe6f3; text-shadow: 0 2px 10px rgba(0,0,0,.9); }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .objective { margin: 10px 14px 0; }
+  .objective .label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .objective .label b { color: var(--text); }
+  .bar { height: 10px; border-radius: 999px; background: var(--card2); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--amber), var(--mint)); transition: width .4s ease; }
+  .feed { flex: 1 1 auto; min-height: 60px; margin: 10px 14px 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+  .feed .line { font-size: 12.5px; color: #cfd6e4; background: rgba(18,21,29,.85); border-radius: 10px; padding: 6px 10px; align-self: flex-start; max-width: 100%; animation: slide .25s ease-out; }
+  .feed .line.hot { color: #fff; border-left: 3px solid var(--rose); }
+  .feed .line.gift { color: #fff; border-left: 3px solid var(--violet); }
+  .feed .line.good { color: #fff; border-left: 3px solid var(--mint); }
+  @keyframes slide { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .gifts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 10px 4px; }
+  .gift { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 6px 9px; text-align: center; cursor: pointer; color: var(--text); font: inherit; }
+  .gift:active { transform: scale(.96); }
+  .gift .ico { font-size: 26px; line-height: 1; }
+  .gift .nm { display: block; margin-top: 5px; font-size: 13px; font-weight: 800; }
+  .gift .tx { display: block; margin-top: 2px; font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+  .gift.small .ico { filter: drop-shadow(0 0 6px var(--sky)); }
+  .gift.medium .ico { filter: drop-shadow(0 0 6px var(--mint)); }
+  .gift.big .ico { filter: drop-shadow(0 0 8px var(--amber)); }
+  .gift.special .ico { filter: drop-shadow(0 0 10px var(--violet)); }
+  .pad { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 14px 16px; align-items: center; }
+  .pad .who { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
+  .pad input { flex: 1; min-width: 0; background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 14px; }
+  .pad .label { font-size: 11px; color: var(--muted); }
+  .dpad { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 44px); gap: 4px; }
+  .dpad button, .act button { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 12px; font: inherit; font-weight: 800; cursor: pointer; }
+  .dpad button:active, .act button:active { background: #2a3142; }
+  .dpad .u { grid-area: 1 / 2; } .dpad .l { grid-area: 2 / 1; } .dpad .d { grid-area: 3 / 2; } .dpad .r { grid-area: 2 / 3; }
+  .dpad .k { grid-area: 2 / 2; background: var(--amber); color: #111; border-color: var(--amber); font-size: 10px; letter-spacing: 0; padding: 0; }
+  .act { display: grid; gap: 8px; }
+  .act button { padding: 10px 14px; font-size: 13px; }
+  .act .join { background: #173b30; border-color: var(--mint); color: var(--mint); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); border-radius: 22px 22px 0 0; padding: 14px 16px 22px; transform: translateY(105%); transition: transform .25s ease; z-index: 5; }
+  .sheet.open { transform: none; }
+  .sheet h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .sheet .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet button, .sheet select { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 12px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+  .sheet .primary { background: var(--mint); color: #05281c; border-color: var(--mint); }
+  .sheet .danger { border-color: var(--rose); color: #ffb3c6; }
+  .sheet .close { margin-top: 10px; background: transparent; color: var(--muted); }
+  .sheet .stats { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .toast-host { position: absolute; left: 0; right: 0; top: 56px; display: flex; justify-content: center; pointer-events: none; z-index: 4; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <header class="top">
+    <div class="timer" id="timer">--:--</div>
+    <div class="chips">
+      <span class="chip live">CANLI</span>
+      <span class="chip" id="count">0/20</span>
+      <span class="chip" id="phase">LOBİ</span>
+    </div>
+    <button class="gear" id="gear" aria-label="Yayıncı ayarları">⚙</button>
+  </header>
+  <div class="ranks" id="ranks"></div>
+  <section class="stage">
+    <canvas id="map" width="341" height="209"></canvas>
+    <div class="banner" id="banner"><span class="big hidden" id="big"></span><span class="small hidden" id="small"></span></div>
+  </section>
+  <section class="objective">
+    <div class="label"><span id="obj-text">Yorum olarak <b>GİR</b> yazın</span><span id="obj-num">0 / 4</span></div>
+    <div class="bar"><i id="gen-bar"></i></div>
+  </section>
+  <section class="feed" id="feed"></section>
+  <section class="gifts" id="gifts"></section>
+  <section class="pad" id="pad">
+    <div class="who"><span class="label">Simüle eden</span><input id="user" value="Ayşe" maxlength="32" aria-label="Kullanıcı adı" /></div>
+    <div class="dpad">
+      <button class="u" data-cmd="YUKARI" aria-label="Yukarı">▲</button>
+      <button class="l" data-cmd="SOL" aria-label="Sol">◀</button>
+      <button class="k" data-cmd="GÖREV">GÖREV</button>
+      <button class="r" data-cmd="SAĞ" aria-label="Sağ">▶</button>
+      <button class="d" data-cmd="AŞAĞI" aria-label="Aşağı">▼</button>
+    </div>
+    <div class="act">
+      <button class="join" data-cmd="GİR">GİR yaz</button>
+      <button data-cmd="KURTAR">KURTAR</button>
+    </div>
+  </section>
+  <div class="toast-host"></div>
+  <section class="sheet" id="sheet" aria-label="Yayıncı ayarları">
+    <h3>Yayıncı</h3>
+    <div class="grid">
+      <button class="primary" id="start">Maçı başlat</button>
+      <button id="stop">Durdur</button>
+      <button id="bots">5 bot ekle</button>
+      <button class="danger" id="reset">Yeni lobi</button>
+    </div>
+    <div style="margin-top:10px">
+      <select id="difficulty" aria-label="Zorluk">
+        <option value="easy">Kolay</option><option value="normal" selected>Normal</option><option value="hard">Zor</option>
+      </select>
+    </div>
+    <div class="stats" id="stats"></div>
+    <button class="close" id="close">Kapat</button>
+  </section>
+</div>
+<script id="app"></script>
+</body>
+</html>

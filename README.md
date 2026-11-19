@@ -42,9 +42,11 @@ Geliştirmede panel anahtarı `dev-host-token` değeridir. Panelde "Giriş yap" 
 
 ## Tek dosyalık prototip
 
-Sunucu ve kurulum gerektirmeyen bir demo: `npm run prototype` komutu `prototype/dist/canavar-avi-prototip.html`
-dosyasını üretir. Dosyayı herhangi bir tarayıcıda açın. Oyun kuralları gerçek `game-core` kodundan gelir,
-yorumlar simüle edilir.
+Sunucu ve kurulum gerektirmeyen demolar: `npm run prototype` iki dosya üretir:
+- `prototype/dist/canavar-avi-prototip.html`: masaüstü düzeni
+- `prototype/dist/canavar-avi-telefon.html`: dikey telefon düzeni (dokunmatik kontroller, hediye kartları)
+
+Dosyaları herhangi bir tarayıcıda açın. Oyun kuralları gerçek `game-core` kodundan gelir, yorumlar simüle edilir.
 
 ## Yayıncı paneli
 
