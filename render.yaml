@@ -1,0 +1,17 @@
+# Render Blueprint: builds the Dockerfile from the repo and runs the virtual-money site.
+# Requires a paid instance because the SQLite database lives on a persistent disk.
+services:
+  - type: web
+    name: bahis-sitesi
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DATA_FILE
+        value: /data/platform.db
+    disk:
+      name: bahis-data
+      mountPath: /data
+      sizeGB: 1

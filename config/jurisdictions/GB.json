@@ -1,0 +1,31 @@
+{
+  "_notes": "Placeholder profile. Contains NO legal determinations. Real money stays disabled until counsel completes legal_review and the operator enables it. Virtual mode is independent of licensing.",
+  "code": "GB",
+  "name": "United Kingdom",
+  "locales": ["en"],
+  "default_locale": "en",
+  "virtual": {
+    "enabled": true,
+    "categories": ["sports", "casino"],
+    "restricted_games": []
+  },
+  "real_money": {
+    "legal_review": { "status": "pending", "reference": null, "reviewed_at": null },
+    "minimum_age": null,
+    "permitted_categories": [],
+    "currencies": [],
+    "restricted_games": [],
+    "kyc": { "deposit_level": null, "withdrawal_level": null },
+    "deposit": { "methods": [], "min": {}, "max_per_tx": {} },
+    "withdrawal": { "methods": [], "min": {}, "max_per_tx": {} },
+    "aml": { "single_transaction_review": {}, "daily_review": {}, "reporting": {} },
+    "responsible_gambling": {
+      "required_tools": [],
+      "reality_check_minutes": null,
+      "cooling_off_hours": 24,
+      "max_daily_deposit": {},
+      "self_exclusion_min_days": 1
+    }
+  },
+  "tax": { "gaming_duty_bps": null, "report_currency": null, "report_period": "monthly" }
+}

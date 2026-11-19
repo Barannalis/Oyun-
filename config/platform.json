@@ -1,0 +1,17 @@
+{
+  "name": "Global Betting Platform",
+  "minimum_age_floor": 18,
+  "default_locale": "en",
+  "locales": ["en", "fr"],
+  "virtual": {
+    "signup_grant_minor": 1000000
+  },
+  "betting": {
+    "min_stake_minor": { "VC": 100 },
+    "max_stake_minor": { "VC": 1000000 }
+  },
+  "payments": {
+    "_note": "method id -> provider id. Empty: no real-money payment method is live. Providers must be registered in code and must be monetary.",
+    "methods": {}
+  }
+}

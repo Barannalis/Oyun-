@@ -1,0 +1,8 @@
+{
+  "_note": "Demo schedule for the virtual MVP. Start times are offsets from the sync time. Replace with a real sports data provider.",
+  "events": [
+    { "externalId": "demo-football-1", "sport": "football", "competition": "Demo Premier League", "region": "GLOBAL", "startsInHours": 48, "home": "Northfield FC", "away": "Riverside United", "odds": { "home": "2.10", "draw": "3.40", "away": "3.20" } },
+    { "externalId": "demo-football-2", "sport": "football", "competition": "Demo Premier League", "region": "GLOBAL", "startsInHours": 72, "home": "Lakeside Rovers", "away": "Hillcrest City", "odds": { "home": "1.85", "draw": "3.60", "away": "4.20" } },
+    { "externalId": "demo-tennis-1", "sport": "tennis", "competition": "Demo Open", "region": "GLOBAL", "startsInHours": 24, "home": "A. Player", "away": "B. Player", "odds": { "home": "1.70", "away": "2.15" } }
+  ]
+}
