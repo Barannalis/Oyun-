@@ -1,0 +1,20 @@
+{
+  "name": "@ttl/overlay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Oyun ekranı (OBS / LIVE Studio tarayıcı kaynağı) ve Aşama 2 simülatör paneli",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ttl/game-core": "0.1.0",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}

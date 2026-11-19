@@ -1,33 +1,30 @@
-# Gradle files
-.gradle/
+# Bağımlılıklar
+node_modules/
+
+# Derlenmiş çıktılar
+dist/
 build/
+coverage/
 
-# Local configuration file (sdk path, etc)
-local.properties
+# Yerel veritabanı ve ortam dosyaları
+*.db
+*.db-journal
+*.sqlite
+.env
+.env.*
+!.env.example
 
-# Log/OS Files
+# Vite / araç önbellekleri
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Loglar ve OS dosyaları
 *.log
+.DS_Store
+Thumbs.db
 
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-output.json
-
-# IntelliJ
-*.iml
+# Editör
 .idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
-
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
+.vscode/
+*.swp

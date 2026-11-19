@@ -1,0 +1,24 @@
+{
+  "name": "tiktok-live-game-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TikTok LIVE yorumlarıyla oynanan, server-authoritative 2D interaktif oyun platformu",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "npm run dev -w @ttl/overlay",
+    "build": "npm run build -w @ttl/overlay"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
