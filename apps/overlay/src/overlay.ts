@@ -8,7 +8,7 @@ import { RoomClient } from './net/RoomClient';
  * Bağlantı, panelin ürettiği oda kimliğiyle kurulur. Oda değişince bağlantı geçersiz olur.
  */
 const params = new URLSearchParams(window.location.search);
-const SERVER_URL: string = params.get('server') ?? import.meta.env.VITE_SERVER_URL ?? 'http://127.0.0.1:3000';
+const SERVER_URL: string = params.get('server') ?? import.meta.env.VITE_SERVER_URL ?? window.location.origin;
 const ROOM_ID = params.get('room');
 
 const session = createSession();

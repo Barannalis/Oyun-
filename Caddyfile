@@ -1,0 +1,5 @@
+# DOMAIN ortam değişkenidir. Caddy sertifikayı otomatik alır ve yeniler.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

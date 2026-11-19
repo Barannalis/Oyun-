@@ -6,6 +6,10 @@ import { MAX_CHAT_LENGTH, type AckResult, type HelloRequest, type HelloResult } 
 import { GameRoom } from './room';
 import { TikTokChatSource, type ChatConnection } from './sources/tiktokSource';
 import { GiftStore, isTier } from './giftStore';
+import { applySecurityHeaders, serveStatic } from './staticFiles';
+
+/** Bir soketten bu kadar yanlış yönetici anahtarı gelirse bağlantı kesilir. */
+const MAX_HOST_AUTH_FAILURES = 20;
 
 export interface TikTokOptions {
   uniqueId: string;
@@ -25,6 +29,8 @@ export interface AppOptions {
   tiktok?: TikTokOptions;
   /** Hediye eşlemeleri veritabanı. Verilmezse geçici bellek kullanılır. */
   giftDbPath?: string;
+  /** Derlenmiş panel ve yayın ekranı klasörü. Verilmezse yalnızca API sunulur. */
+  staticRoot?: string;
 }
 
 export interface App {
@@ -72,9 +78,13 @@ function randomSeed(): number {
 
 export async function createApp(opts: AppOptions): Promise<App> {
   const httpServer: HttpServer = createServer((req, res) => {
-    if (req.url === '/health') {
+    applySecurityHeaders(res);
+    if (req.url?.split('?')[0] === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+    if (opts.staticRoot && (req.method === 'GET' || req.method === 'HEAD') && serveStatic(opts.staticRoot, req, res)) {
       return;
     }
     res.writeHead(404);
@@ -105,6 +115,13 @@ export async function createApp(opts: AppOptions): Promise<App> {
 
   io.on('connection', (socket: Socket) => {
     socket.emit('init', room.initPayload());
+    let hostAuthFailures = 0;
+    const hostAuth = (req: unknown): boolean => {
+      if (isHost(req)) return true;
+      hostAuthFailures += 1;
+      if (hostAuthFailures >= MAX_HOST_AUTH_FAILURES) socket.disconnect(true);
+      return false;
+    };
 
     socket.on('hello', (req: unknown, ack?: unknown) => {
       const parsed = parseHello(req);
@@ -123,18 +140,18 @@ export async function createApp(opts: AppOptions): Promise<App> {
     });
 
     socket.on('host:start', (req: unknown, ack?: unknown) => {
-      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       reply(ack, room.startMatch());
     });
 
     socket.on('host:reset', (req: unknown, ack?: unknown) => {
-      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       room.reset(randomSeed());
       reply(ack, { ok: true });
     });
 
     socket.on('host:chat', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       const user = typeof req.user === 'string' && req.user.trim().length > 0 && req.user.length <= 64 ? req.user : null;
       const text = parseText(req);
       if (user === null || text === null) return reply(ack, { ok: false, reason: 'invalid_text' } satisfies AckResult);
@@ -142,40 +159,40 @@ export async function createApp(opts: AppOptions): Promise<App> {
     });
 
     socket.on('host:status', (req: unknown, ack?: unknown) => {
-      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       reply(ack, { ok: true, ...room.status() });
     });
 
     socket.on('host:difficulty', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (!isDifficulty(req.difficulty)) return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       reply(ack, room.changeDifficulty(req.difficulty));
     });
 
     socket.on('host:stop', (req: unknown, ack?: unknown) => {
-      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       reply(ack, room.endMatch());
     });
 
     socket.on('host:block', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (typeof req.name !== 'string') return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       reply(ack, room.blockPlayer(req.name));
     });
 
     socket.on('host:unblock', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (typeof req.name !== 'string') return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       reply(ack, room.unblockPlayer(req.name));
     });
 
     socket.on('host:gifts', (req: unknown, ack?: unknown) => {
-      if (!isHost(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       reply(ack, { ok: true, gifts: room.listGifts() });
     });
 
     socket.on('host:gift:set', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (typeof req.name !== 'string' || !isTier(req.tier)) {
         return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       }
@@ -184,7 +201,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     });
 
     socket.on('host:gift:delete', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (typeof req.name !== 'string') return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       room.removeGift(req.name);
       reply(ack, { ok: true });
@@ -192,7 +209,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
 
     /** Yayıncı panelindeki simülatör hediyesi. TikTok hediyeleriyle aynı girişten geçer. */
     socket.on('host:gift', (req: unknown, ack?: unknown) => {
-      if (!isHost(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
+      if (!hostAuth(req) || !isObject(req)) return reply(ack, { ok: false, reason: 'unauthorized' } satisfies AckResult);
       if (typeof req.user !== 'string' || typeof req.giftName !== 'string' || req.user.trim().length === 0) {
         return reply(ack, { ok: false, reason: 'invalid_request' } satisfies AckResult);
       }

@@ -12,7 +12,7 @@ import { REASON_LABEL, pushLog } from './format';
 import { createSession } from './session';
 import { RoomClient } from './net/RoomClient';
 
-const SERVER_URL: string = import.meta.env.VITE_SERVER_URL ?? 'http://127.0.0.1:3000';
+const SERVER_URL: string = import.meta.env.VITE_SERVER_URL ?? window.location.origin;
 const TOKEN_KEY = 'ttl-host-token';
 
 /** Anahtar yalnızca oturumda saklanır. Geliştirmede isteğe bağlı olarak ortam değişkeninden gelir. */

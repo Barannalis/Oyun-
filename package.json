@@ -12,7 +12,8 @@
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev": "npm run dev -w @ttl/overlay",
-    "build": "npm run build -w @ttl/overlay"
+    "build": "npm run build -w @ttl/overlay",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

@@ -1,30 +1,54 @@
-import { createApp, type TikTokOptions } from './app';
+import { createApp } from './app';
+import { ConfigError, loadConfig } from './config';
+import { createTikTokConnectionFactory } from './sources/tiktokConnection';
 
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? '127.0.0.1';
-const hostToken = process.env.HOST_TOKEN ?? 'dev-host-token';
-const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://127.0.0.1:5173,http://localhost:5173').split(',');
+let config: ReturnType<typeof loadConfig>;
+try {
+  config = loadConfig(process.env);
+} catch (err) {
+  console.error(`Yapılandırma hatası: ${err instanceof ConfigError ? err.message : String(err)}`);
+  process.exit(1);
+}
 
-if (!process.env.HOST_TOKEN) {
+if (config.hostTokenIsDefault) {
   console.warn('[uyarı] HOST_TOKEN tanımlı değil, geliştirme varsayılanı kullanılıyor. Dağıtımdan önce mutlaka değiştirin.');
 }
 
-let tiktok: TikTokOptions | undefined;
-if (process.env.TIKTOK_ENABLED === '1') {
-  const uniqueId = process.env.TIKTOK_UNIQUE_ID?.trim();
-  if (!uniqueId) {
-    console.error('TIKTOK_ENABLED=1 için TIKTOK_UNIQUE_ID (TikTok kullanıcı adı) gerekli.');
-    process.exit(1);
-  }
+let tiktok: Parameters<typeof createApp>[0]['tiktok'];
+if (config.tiktok) {
   // Kütüphane yalnızca bu dalda yüklenir. Kapalıyken hiç içe aktarılmaz.
-  const { createTikTokConnectionFactory } = await import('./sources/tiktokConnection');
-  const createConnection = await createTikTokConnectionFactory({ signApiKey: process.env.SIGN_API_KEY });
-  tiktok = { uniqueId, createConnection };
+  const createConnection = await createTikTokConnectionFactory({ signApiKey: config.tiktok.signApiKey });
+  tiktok = { uniqueId: config.tiktok.uniqueId, createConnection };
   console.warn(
     '[uyarı] TikTok adaptörü açık. Resmi olmayan bir kütüphane kullanılıyor: hizmet koşulu ve kesinti riski vardır (README).',
   );
 }
 
-const giftDbPath = process.env.GIFT_DB ?? './data/gifts.db';
-const app = await createApp({ port, host, hostToken, corsOrigins, tiktok, giftDbPath });
-console.log(`Oyun sunucusu hazır: ${app.url()} · TikTok: ${tiktok ? 'açık' : 'kapalı'}`);
+const app = await createApp({
+  port: config.port,
+  host: config.host,
+  hostToken: config.hostToken,
+  corsOrigins: config.corsOrigins,
+  giftDbPath: config.giftDbPath,
+  staticRoot: config.overlayDist,
+  tiktok,
+});
+console.log(
+  `Oyun sunucusu hazır: ${app.url()} · TikTok: ${config.tiktok ? 'açık' : 'kapalı'} · panel: ${config.overlayDist ? 'sunuluyor' : 'yok'}`,
+);
+
+let closing = false;
+const shutdown = async (signal: string): Promise<void> => {
+  if (closing) return;
+  closing = true;
+  console.log(`${signal} alındı, sunucu kapatılıyor`);
+  try {
+    await app.close();
+    process.exit(0);
+  } catch (err) {
+    console.error('Kapatma sırasında hata:', err);
+    process.exit(1);
+  }
+};
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
