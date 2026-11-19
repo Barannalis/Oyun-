@@ -36,6 +36,15 @@ Environment variables:
 | `PORT` | `3000` | HTTP port |
 | `DATA_FILE` | `data/platform.db` | SQLite file (git-ignored) |
 
+## Docker ile yayınlama
+
+```bash
+docker build -t betting-site-virtual .
+docker run -p 3000:3000 -e ADMIN_TOKEN="$(openssl rand -hex 24)" -v betting-data:/data betting-site-virtual
+```
+
+İmaj yalnızca sanal para modunu açar. Gerçek para hiçbir ülkede varsayılan olarak açık değildir.
+
 ## Configuration
 
 - `config/platform.json`: platform-wide settings (age floor, languages, signup grant, stake caps, payment method mapping).
