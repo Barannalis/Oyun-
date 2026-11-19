@@ -7,14 +7,12 @@ import {
   MAX_PLAYERS,
   RESCUE_IMMUNITY_TICKS,
   RESCUE_REQUIRED,
-  TICK_RATE,
 } from '../src/config';
 import { isWalkable, manhattan } from '../src/map';
 import { parseCommand } from '../src/commands';
 import { createWorld, enqueue, isNight, litTiles, startMatch, step, userKey } from '../src/world';
-import type { Command, Direction, GameWorld, Player } from '../src/types';
+import type { Command, GameWorld, Player } from '../src/types';
 
-const DIRS: Direction[] = ['up', 'down', 'left', 'right'];
 
 function cmd(text: string): Command {
   const c = parseCommand(text);

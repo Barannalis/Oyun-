@@ -13,10 +13,16 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev": "npm run dev -w @ttl/overlay",
     "build": "npm run build -w @ttl/overlay",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "dev:all": "node scripts/dev.mjs",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.73.0",
     "vitest": "^3.2.4"
   },
   "engines": {

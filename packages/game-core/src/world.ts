@@ -28,7 +28,6 @@ import type {
   Command,
   Difficulty,
   Direction,
-  GameEvent,
   GameWorld,
   GiftTier,
   Intent,

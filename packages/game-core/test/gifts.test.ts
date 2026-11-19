@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { GIFT, MOVE_COOLDOWN_SURVIVOR } from '../src/config';
 import { isDark, isNight, setDifficulty, startMatch, step, stopMatch, addPlayer, createWorld, enqueue, litTiles, visionRadius } from '../src/world';
-import { DAY_TICKS, VISION } from '../src/config';
-import type { GameEvent, GameWorld, GiftTier, Player } from '../src/types';
+import { VISION } from '../src/config';
+import type { GameWorld, GiftTier, Player } from '../src/types';
 
 function started(seed: number, names: string[]): GameWorld {
   const w = createWorld(seed);
@@ -20,10 +20,6 @@ function role(w: GameWorld, role: Player['role']): Player {
 
 function gift(w: GameWorld, name: string, tier: GiftTier): void {
   enqueue(w, name, { type: 'gift', tier, giftName: 'test' });
-}
-
-function eventsOf(w: GameWorld, type: GameEvent['type']): GameEvent[] {
-  return w.events.filter((e) => e.type === type);
 }
 
 function clearCooldowns(w: GameWorld): void {

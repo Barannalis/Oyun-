@@ -30,9 +30,11 @@ Gereksinim: Node.js 22 veya üstü.
 
 ```bash
 npm install
-npm run check        # tip denetimi + tüm testler + derleme
-npm run start        # oyun sunucusu, http://127.0.0.1:3000
-npm run dev          # yayıncı paneli, http://127.0.0.1:5173
+npm run dev:all      # sunucu (3000) ve panel (5173) birlikte, Ctrl+C ile ikisi birden kapanır
+npm run check        # tip denetimi + lint + tüm testler + derleme
+npm run lint         # yalnızca lint
+npm run start        # yalnızca oyun sunucusu, http://127.0.0.1:3000
+npm run dev          # yalnızca yayıncı paneli, http://127.0.0.1:5173
 npm run loadtest     # 90 soketli yük testi (sunucuyu geçici olarak kendisi başlatır)
 ```
 
@@ -150,7 +152,8 @@ ortamında canlı yayın akışı doğrulanmadı.
 
 | Komut | Kapsam |
 |---|---|
-| `npm run check` | Tip denetimi, tüm testler, derleme |
+| `npm run check` | Tip denetimi, lint, tüm testler, derleme |
+| `npm run lint` | ESLint (TypeScript kuralları, kullanılmayan kod dahil) |
 | `npm test` | game-core 112 test, sunucu 62 test (soket entegrasyonu, HTTP, yapılandırma, TikTok sahte bağlantısı) |
 | `npm run loadtest` | 90 soket, 20 oyuncu, spam senaryosu, gecikme ölçümü |
 
@@ -159,7 +162,7 @@ Son yük testi sonucu (aynı makinede istemci ve sunucu, 10 sn): 90 bağlantı k
 Tarayıcı testi (panel ve yayın ekranı, üretim konteynerinde): 14 kontrol geçti, CSP engellemesi yok.
 
 Bilinen sınırlar: tek oda çalışır (çoklu yayıncı için oda yönetimi gerekir), yayın ekranı paketi
-yaklaşık 1.5 MB (Phaser), konteyner imajı yaklaşık 540 MB. Lint yapılandırması yok.
+yaklaşık 1.5 MB (Phaser), konteyner imajı yaklaşık 540 MB.
 
 ## Geliştirme ilkeleri
 
