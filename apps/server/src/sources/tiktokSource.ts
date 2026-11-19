@@ -145,7 +145,7 @@ function describe(err: unknown): string {
     const message = (err as { message?: unknown }).message;
     if (typeof message === 'string' && message.length > 0) return message;
   }
-  return 'Bilinmeyen hata';
+  return 'Kütüphane hatası';
 }
 
 /** Yayın kapalıyken kütüphanenin fırlattığı UserOfflineError'ı tanır. */
