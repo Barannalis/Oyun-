@@ -5,7 +5,36 @@ import type { GameEvent, GameWorld, GiftEntry, HostStatus, SourceInfo } from '@t
  * world: sunucudan gelen dünya kopyası (null = henüz init gelmedi).
  * stale: overlay bağlantısının oda kimliği artık geçerli değil.
  */
+/** Tamamlanmış bir maçın özeti. Denge ölçümü için panelden indirilir. */
+export interface MatchRecord {
+  startedAt: string;
+  endedAt: string;
+  durationSec: number;
+  players: number;
+  killer: string | null;
+  winner: 'survivors' | 'killer' | null;
+  reason: string;
+  catches: number;
+  rescues: number;
+  generatorsDone: number;
+  shieldBlocks: number;
+}
+
+/** Devam eden maçın sayaçları. Maç bitince MatchRecord'a dönüşür. */
+export interface MatchDraft {
+  startedMs: number;
+  startedAt: string;
+  players: number;
+  killer: string | null;
+  catches: number;
+  rescues: number;
+  generatorsDone: number;
+  shieldBlocks: number;
+}
+
 export interface Session {
+  matches: MatchRecord[];
+  matchDraft: MatchDraft | null;
   world: GameWorld | null;
   pending: GameEvent[];
   log: string[];
@@ -29,5 +58,7 @@ export function createSession(): Session {
     stale: false,
     hostStatus: null,
     authOk: null,
+    matches: [],
+    matchDraft: null,
   };
 }

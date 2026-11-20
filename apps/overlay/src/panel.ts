@@ -75,6 +75,62 @@ function overlayUrl(roomId: string): string {
   return url.toString();
 }
 
+function playerUrl(roomId: string): string {
+  const url = new URL('player.html', window.location.href);
+  url.searchParams.set('server', SERVER_URL);
+  url.searchParams.set('room', roomId);
+  return url.toString();
+}
+
+$('copy-player').addEventListener('click', async () => {
+  const value = $<HTMLInputElement>('player-url').value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    pushLog(session.log, '» Oyuncu bağlantısı kopyalandı');
+  } catch {
+    $<HTMLInputElement>('player-url').select();
+  }
+});
+
+$('match-download').addEventListener('click', () => {
+  const data = JSON.stringify({ exportedAt: new Date().toISOString(), matches: session.matches }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'canavar-avi-mac-kayitlari.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+$('match-clear').addEventListener('click', () => {
+  if (!window.confirm('Tüm maç kayıtları silinsin mi? Bu geri alınamaz.')) return;
+  session.matches.length = 0;
+  lastMatchSig = '';
+});
+
+let lastMatchSig = '';
+function renderMatches(): void {
+  const sig = `${session.matches.length}`;
+  if (sig === lastMatchSig) return;
+  lastMatchSig = sig;
+  const m = session.matches;
+  $('match-count').textContent = String(m.length);
+  const decided = m.filter((x) => x.winner !== null);
+  $('match-survivor-rate').textContent = decided.length
+    ? `%${Math.round((decided.filter((x) => x.winner === 'survivors').length / decided.length) * 100)}`
+    : '-';
+  $('match-list').innerHTML =
+    m
+      .slice(-8)
+      .reverse()
+      .map((x) => {
+        const who = x.winner === 'survivors' ? 'Hayatta kalanlar' : x.winner === 'killer' ? 'Katil' : 'Durduruldu';
+        return `<li style="padding:4px 0;border-bottom:1px dashed var(--line)">${escapeHtml(who)} · ${x.durationSec} sn · ${x.players} oyuncu · ${x.catches} yakalama · ${x.rescues} kurtarma</li>`;
+      })
+      .join('') || '<li class="muted">Henüz tamamlanmış maç yok</li>';
+}
+
 $('copy-url').addEventListener('click', async () => {
   const value = $<HTMLInputElement>('overlay-url').value;
   if (!value) return;
@@ -205,6 +261,7 @@ function renderLink(): void {
   if (url === lastOverlayUrl) return;
   lastOverlayUrl = url;
   $<HTMLInputElement>('overlay-url').value = url;
+  $<HTMLInputElement>('player-url').value = roomId ? playerUrl(roomId) : '';
   const frame = $<HTMLIFrameElement>('preview');
   if (url) frame.src = url;
   else frame.removeAttribute('src');
@@ -313,6 +370,7 @@ function render(): void {
   renderWorld(session.world);
   renderBlocked();
   renderGifts();
+  renderMatches();
   renderLog();
 }
 

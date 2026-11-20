@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CANAVAR AVI · Oyuncu</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { color-scheme: dark; --bg1:#2b1c52; --bg2:#120b2a; --card:#3a2a6b; --card2:#4a3684; --line:#5b4aa0; --text:#fff8ec; --muted:#cbbde8; --sun:#ffd23f; --pink:#ff6b9a; --mint:#51d6a8; --violet:#a78bfa; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg2); color: var(--text); font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif; }
+  .wrap { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 16px 16px 28px; background: radial-gradient(120% 60% at 50% 0%, var(--bg1), var(--bg2) 70%); display: flex; flex-direction: column; gap: 14px; }
+  h1 { margin: 4px 0 0; font-size: 20px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .card { background: var(--card); border-radius: 22px; padding: 16px; box-shadow: 0 5px 0 #1a0f33; }
+  .card h2 { margin: 0 0 10px; font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  input { flex: 1; min-width: 0; background: var(--card2); border: 2px solid var(--line); color: var(--text); border-radius: 14px; padding: 12px; font: inherit; font-size: 16px; font-weight: 800; }
+  button { font: inherit; font-weight: 900; color: var(--text); background: var(--card2); border: 0; border-radius: 16px; padding: 12px 14px; cursor: pointer; box-shadow: 0 4px 0 #1a0f33; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a0f33; }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  button.primary { background: var(--mint); color: #053a2a; }
+  .role { display: inline-block; padding: 8px 14px; border-radius: 999px; font-size: 15px; font-weight: 900; box-shadow: 0 3px 0 #1a0f33; }
+  .role.killer { background: var(--pink); color: #fff; }
+  .role.survivor { background: var(--mint); color: #053a2a; }
+  .role.none { background: var(--card2); color: var(--muted); }
+  .status { font-size: 16px; font-weight: 800; margin-top: 10px; line-height: 1.4; }
+  .feedback { min-height: 22px; font-size: 13px; font-weight: 800; color: var(--sun); margin-top: 8px; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 62px); gap: 8px; max-width: 280px; margin: 0 auto; }
+  .dpad button { font-size: 20px; }
+  .dpad .u { grid-area: 1 / 2; } .dpad .l { grid-area: 2 / 1; } .dpad .d { grid-area: 3 / 2; } .dpad .r { grid-area: 2 / 3; }
+  .dpad .k { grid-area: 2 / 2; background: var(--sun); color: #3d2600; font-size: 13px; }
+  .act { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .act button { padding: 16px; font-size: 16px; }
+  .act .kurtar { background: var(--violet); color: #fff; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-weight: 700; font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>CANAVAR AVI</h1>
+    <div class="sub">Test oyuncusu · <span id="conn">bağlanıyor…</span></div>
+  </header>
+
+  <section class="card" id="join-card">
+    <h2>Katıl</h2>
+    <div class="row">
+      <input id="name" maxlength="32" placeholder="Adın" aria-label="Adın" autocomplete="off" />
+      <button id="join" class="primary">Katıl</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0">Adını yaz ve katıl. Maç yayıncı tarafından başlatılır. Rolün maç başlayınca görünür.</p>
+  </section>
+
+  <section class="card hidden" id="game-card">
+    <h2>Rolün</h2>
+    <span class="role none" id="role">Lobi</span>
+    <div class="status" id="status">Maç başlamayı bekliyor.</div>
+    <div class="feedback" id="feedback" role="status"></div>
+    <div class="dpad" style="margin-top:12px">
+      <button class="u" data-cmd="YUKARI" aria-label="Yukarı">▲</button>
+      <button class="l" data-cmd="SOL" aria-label="Sol">◀</button>
+      <button class="k" data-cmd="GÖREV">GÖREV</button>
+      <button class="r" data-cmd="SAĞ" aria-label="Sağ">▶</button>
+      <button class="d" data-cmd="AŞAĞI" aria-label="Aşağı">▼</button>
+    </div>
+    <div class="act">
+      <button class="kurtar" data-cmd="KURTAR">KURTAR</button>
+      <button id="leave">Ayrıl</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="/src/player.ts"></script>
+</body>
+</html>

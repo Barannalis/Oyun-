@@ -40,6 +40,10 @@ npm run loadtest     # 90 soketli yük testi (sunucuyu geçici olarak kendisi ba
 
 Geliştirmede panel anahtarı `dev-host-token` değeridir. Panelde "Giriş yap" ile girin.
 
+## Test lobisi
+
+6-8 kişiyle denge testi için adım adım rehber: [docs/PLAYTEST.md](docs/PLAYTEST.md). Panelde "Test lobisi" bağlantısı oyuncu sayfasını açar, "Maç kayıtları" kartı her maçı JSON olarak indirir.
+
 ## Tek dosyalık prototip
 
 Sunucu ve kurulum gerektirmeyen demolar: `npm run prototype` iki dosya üretir:

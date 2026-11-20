@@ -144,6 +144,29 @@
         </section>
 
         <section class="card">
+          <h2>Test lobisi (oyuncu bağlantısı)</h2>
+          <div class="row">
+            <input id="player-url" type="url" readonly aria-label="Oyuncu bağlantısı" placeholder="Giriş yapınca oluşur" />
+            <button id="copy-player">Kopyala</button>
+          </div>
+          <p class="hint">Test oyuncuları bu bağlantıyı telefonlarında açıp bir ad yazar. Oyuncu ekranında rolünü görür ve oynar.</p>
+        </section>
+
+        <section class="card">
+          <h2>Maç kayıtları</h2>
+          <div class="stats">
+            <div class="stat"><small>Tamamlanan maç</small><b id="match-count">0</b></div>
+            <div class="stat"><small>Hayatta kalan galibiyeti</small><b id="match-survivor-rate">-</b></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button id="match-download" class="primary">JSON indir</button>
+            <button id="match-clear" class="danger">Kayıtları temizle</button>
+          </div>
+          <div class="scroll" style="margin-top:10px"><ol id="match-list" style="list-style:none;padding:0;margin:0;font-size:13px"></ol></div>
+          <p class="hint">Kayıtlar yalnızca bu tarayıcıdadır. Oyuncu adları içerir, paylaşırken dikkat edin.</p>
+        </section>
+
+        <section class="card">
           <h2>Engellenenler</h2>
           <div id="blocked" class="muted" style="font-size:13px">Engelli oyuncu yok.</div>
         </section>

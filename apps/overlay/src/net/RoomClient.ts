@@ -5,15 +5,17 @@ import {
   type AckResult,
   type Difficulty,
   type EventsMessage,
+  type GameEvent,
   type GiftEntry,
   type GiftTier,
   type HostStatus,
   type InitMessage,
+  type PublicState,
   type SourceInfo,
   type StateMessage,
 } from '@ttl/game-core';
 import { errorText, pushLog } from '../format';
-import type { Session } from '../session';
+import type { MatchDraft, MatchRecord, Session } from '../session';
 
 export interface RoomClientOptions {
   url: string;
@@ -66,14 +68,64 @@ export class RoomClient {
       session.stale = opts.roomId ? init.roomId !== opts.roomId : false;
     });
     this.socket.on('state', (msg: StateMessage) => {
-      if (session.world) applyPublicState(session.world, msg.state);
+      if (!session.world) return;
+      const wasPlaying = session.world.phase === 'playing';
+      applyPublicState(session.world, msg.state);
+      if (!wasPlaying && msg.state.phase === 'playing') this.beginMatch(msg.state);
     });
     this.socket.on('source', (info: SourceInfo) => {
       session.source = info;
     });
     this.socket.on('events', (msg: EventsMessage) => {
-      for (const e of msg.events) session.pending.push(e);
+      for (const e of msg.events) {
+        session.pending.push(e);
+        this.recordEvent(e);
+      }
     });
+  }
+
+  /** Maç başladığında sayaçları sıfırlar ve kurucu bilgisini kaydeder. */
+  private beginMatch(state: PublicState): void {
+    const killer = Object.values(state.players).find((p) => p.role === 'killer')?.name ?? null;
+    const draft: MatchDraft = {
+      startedMs: Date.now(),
+      startedAt: new Date().toISOString(),
+      players: Object.keys(state.players).length,
+      killer,
+      catches: 0,
+      rescues: 0,
+      generatorsDone: 0,
+      shieldBlocks: 0,
+    };
+    this.session.matchDraft = draft;
+  }
+
+  /** Olayları sayar. 'ended' gelince maç kaydı oluşturulur. */
+  private recordEvent(e: GameEvent): void {
+    const d = this.session.matchDraft;
+    if (!d) return;
+    if (e.type === 'caught') d.catches += 1;
+    else if (e.type === 'rescued') d.rescues += 1;
+    else if (e.type === 'generator-done') d.generatorsDone += 1;
+    else if (e.type === 'shield-blocked') d.shieldBlocks += 1;
+    else if (e.type === 'ended') {
+      const endedMs = Date.now();
+      const record: MatchRecord = {
+        startedAt: d.startedAt,
+        endedAt: new Date(endedMs).toISOString(),
+        durationSec: Math.round((endedMs - d.startedMs) / 1000),
+        players: d.players,
+        killer: d.killer,
+        winner: e.winner,
+        reason: e.reason,
+        catches: d.catches,
+        rescues: d.rescues,
+        generatorsDone: d.generatorsDone,
+        shieldBlocks: d.shieldBlocks,
+      };
+      this.session.matches.push(record);
+      this.session.matchDraft = null;
+    }
   }
 
   /** Yayıncı paneli için: host olaylarını token ile gönderir. Token yoksa yerelde reddedilir. */
